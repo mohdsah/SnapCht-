@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SnapCht · Video Pendek Masa Kini</title>
+    <title>SnapCht · Video Pendek Masa Kini · Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -21,12 +22,39 @@
             width: 100vw;
         }
 
-        /* SCROLLBAR CUSTOM */
+        /* LOADING SCREEN */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: #fe2c55;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* SCROLLBAR */
         .sidebar-left::-webkit-scrollbar { width: 4px; }
         .sidebar-left::-webkit-scrollbar-track { background: #1a1a1a; }
         .sidebar-left::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 10px; }
 
-        /* HEADER GLASSMORPHISM */
+        /* HEADER */
         .app-header {
             position: fixed;
             top: 0;
@@ -35,7 +63,6 @@
             height: 64px;
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
             border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
@@ -95,6 +122,7 @@
             border-radius: 50%;
             transition: 0.2s;
         }
+        .header-right:active { transform: scale(0.95); }
 
         /* MAIN WRAPPER */
         .main-wrapper {
@@ -106,7 +134,7 @@
             overflow: hidden;
         }
 
-        /* SIDEBAR KIRI */
+        /* SIDEBAR */
         .sidebar-left {
             width: 280px;
             background: #000000;
@@ -136,9 +164,24 @@
             margin-bottom: 6px;
             color: #e0e0e0;
             cursor: pointer;
+            transition: background 0.2s;
         }
+        .menu-item:hover { background: #1a1a1a; }
         .menu-item.active { background: #1e1e2a; color: #fe2c55; }
         .menu-item .menu-icon { font-size: 1.35rem; width: 28px; }
+
+        /* NOTIFICATION BADGE */
+        .notification-badge {
+            background: #fe2c55;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 8px;
+        }
 
         .account-item {
             display: flex;
@@ -147,6 +190,7 @@
             padding: 10px 12px;
             border-radius: 14px;
             cursor: pointer;
+            transition: background 0.2s;
         }
         .account-item:hover { background: #111; }
         .avatar-box {
@@ -179,6 +223,7 @@
             height: 100%;
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
         }
         .feed-container::-webkit-scrollbar { display: none; }
 
@@ -200,11 +245,12 @@
             border-radius: 28px;
             overflow: hidden;
             aspect-ratio: 9 / 16;
-            position: relative; /* Ditambah untuk pastikan child absolute tidak lari */
+            position: relative;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.7);
         }
         @media (max-width: 800px) {
             .video-wrapper { padding: 0; }
-            .video-card { max-width: 100%; border-radius: 0; max-height: 100%; aspect-ratio: auto; }
+            .video-card { max-width: 100%; border-radius: 0; aspect-ratio: auto; }
         }
         .main-video-player {
             width: 100%;
@@ -229,7 +275,9 @@
             flex-direction: column;
             align-items: center;
             cursor: pointer;
+            transition: transform 0.1s ease;
         }
+        .interact-btn:active { transform: scale(0.92); }
         .circle-icon {
             width: 46px;
             height: 46px;
@@ -243,9 +291,9 @@
             margin-bottom: 5px;
             position: relative;
             border: 1px solid rgba(255,255,255,0.2);
-            transition: transform 0.1s ease;
+            transition: all 0.2s ease;
         }
-        .circle-icon.liked { background: #fe2c55; color: white; border-color: #fe2c55; }
+        .circle-icon.liked { background: #fe2c55; color: white; transform: scale(1.05); }
         .profile-badge {
             position: absolute;
             bottom: -2px;
@@ -331,6 +379,7 @@
             gap: 3px;
             color: #9a9aa0;
             cursor: pointer;
+            transition: color 0.2s;
         }
         .nav-item-box.active { color: #fe2c55; }
         .nav-icon { font-size: 1.6rem; }
@@ -397,7 +446,6 @@
             margin-bottom: 16px;
             font-family: inherit;
         }
-        .modal-textarea { resize: none; }
         .btn-primary {
             background: #fe2c55;
             border: none;
@@ -407,6 +455,14 @@
             font-weight: bold;
             cursor: pointer;
             width: 100%;
+        }
+        .btn-secondary {
+            background: #333;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
         }
 
         /* CHAT STYLES */
@@ -464,16 +520,25 @@
             color: white;
             white-space: nowrap;
             animation: fadeInUp 0.2s ease;
-            pointer-events: none;
-            border: 0.5px solid rgba(255,255,255,0.15);
         }
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateX(-50%) translateY(10px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #777;
+        }
     </style>
 </head>
 <body>
+
+<div class="loading-screen" id="loadingScreen">
+    <div class="loading-spinner"></div>
+    <p>Memuatkan SnapCht...</p>
+</div>
 
 <header class="app-header">
     <div class="header-left">
@@ -481,8 +546,8 @@
     </div>
     <div class="header-center">
         <div class="top-tabs">
-            <div class="top-tab" data-tab="following">Following</div>
-            <div class="top-tab active" data-tab="foryou">For You</div>
+            <div class="top-tab" data-tab="foryou">For You</div>
+            <div class="top-tab" data-tab="trending">Trending</div>
         </div>
     </div>
     <div class="header-right" id="searchBtn">🔍</div>
@@ -492,41 +557,21 @@
     <aside class="sidebar-left">
         <div class="menu-section">
             <div class="menu-item active" data-nav="home"><span class="menu-icon">🏠</span> For You</div>
-            <div class="menu-item" data-nav="follow"><span class="menu-icon">👥</span> Following</div>
-            <div class="menu-item" data-nav="trend"><span class="menu-icon">🔥</span> Trending</div>
-            <div class="menu-item" data-nav="liked"><span class="menu-icon">❤️</span> Liked Videos</div>
+            <div class="menu-item" data-nav="trending"><span class="menu-icon">🔥</span> Trending</div>
+            <div class="menu-item" data-nav="myvideos"><span class="menu-icon">📹</span> My Videos</div>
         </div>
         <div class="menu-section">
-            <div class="menu-title">Following accounts</div>
-            <div class="account-item" data-user="mack_martin92">
-                <div class="avatar-box">🦊</div>
-                <div class="account-name">mack_martin92</div>
-            </div>
-            <div class="account-item" data-user="cik2984">
-                <div class="avatar-box">🐱</div>
-                <div class="account-name">cik2984</div>
-            </div>
-            <div class="account-item" data-user="adona1595">
-                <div class="avatar-box">🐼</div>
-                <div class="account-name">adona1595</div>
-            </div>
-            <div class="account-item" data-user="fikri_creator">
-                <div class="avatar-box">🎨</div>
-                <div class="account-name">fikri_creator</div>
-            </div>
-            <div class="account-item" data-user="mia_sarawak">
-                <div class="avatar-box">🌸</div>
-                <div class="account-name">mia_sarawak</div>
-            </div>
+            <div class="menu-title">Suggested accounts</div>
+            <div id="suggestedAccounts"></div>
         </div>
         <div class="menu-section">
             <div class="menu-title">SnapCht Resources</div>
             <div class="footer-links">
                 <a href="#">About</a> <a href="#">Newsroom</a> <a href="#">Contact</a>
                 <a href="#">Careers</a> <a href="#">Advertise</a> <a href="#">Developers</a>
-                <a href="#">SnapCht Shop</a> <a href="#">Privacy</a> <a href="#">Terms</a>
+                <a href="#">Privacy</a> <a href="#">Terms</a>
             </div>
-            <div class="copyright-text">© 2026 SnapCht • Made for creators</div>
+            <div class="copyright-text">© 2026 SnapCht • Powered by Supabase</div>
         </div>
     </aside>
 
@@ -537,445 +582,635 @@
 
 <nav class="mobile-nav-bar">
     <div class="nav-item-box active" data-mnav="home"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></div>
-    <div class="nav-item-box" data-mnav="discover"><span class="nav-icon">🧭</span><span class="nav-label">Discover</span></div>
+    <div class="nav-item-box" data-mnav="trending"><span class="nav-icon">🔥</span><span class="nav-label">Trending</span></div>
     <div class="nav-item-box" data-mnav="create"><div class="create-btn-wrapper">+</div></div>
     <div class="nav-item-box" data-mnav="inbox"><span class="nav-icon">💬</span><span class="nav-label">Inbox</span></div>
     <div class="nav-item-box" data-mnav="profile"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></div>
 </nav>
 
 <script>
-    (function() {
-        // Pemboleh ubah global peringkat aplikasi untuk kawalan memori
-        let currentObserver = null;
-
-        // ==================== INITIALISASI STORAGE ====================
-        if(!localStorage.getItem('snapcht_username')) {
-            localStorage.setItem('snapcht_username', 'pengguna_' + Math.floor(Math.random() * 10000));
+    // ==================== SUPABASE CONFIG ====================
+    const SUPABASE_URL = 'https://xliywedqcpavytvmlqib.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsaXl3ZWRxY3Bhdnl0dm1scWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE0OTUsImV4cCI6MjA5NjQyNzQ5NX0.YJ4doL1vTXcVWX5M0n3tpS5gbO5HB4S0d5V_1i4_LsM';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // ==================== STATE ====================
+    let currentUser = null;
+    let currentObserver = null;
+    let allVideos = [];
+    let currentFeedType = 'foryou';
+    let unreadMessages = 0;
+    let currentChatUser = null;
+    
+    // ==================== HELPER FUNCTIONS ====================
+    function showToast(msg) {
+        let existing = document.querySelector('.toast-message');
+        if(existing) existing.remove();
+        let toast = document.createElement('div');
+        toast.className = 'toast-message';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }
+    
+    function formatLikes(likes) {
+        if (likes >= 1000000) return (likes / 1000000).toFixed(1) + 'M';
+        if (likes >= 1000) return (likes / 1000).toFixed(1) + 'K';
+        return likes.toString();
+    }
+    
+    function hideLoading() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if(loadingScreen) loadingScreen.style.display = 'none';
+    }
+    
+    function escapeHtml(str) {
+        if(!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if(m === '&') return '&amp;';
+            if(m === '<') return '&lt;';
+            if(m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    // ==================== AUTH INIT ====================
+    async function initAuth() {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if(session) {
+            currentUser = session.user;
+            await Promise.all([
+                loadSuggestedAccounts(),
+                loadMessages(),
+                loadVideos('foryou')
+            ]);
+            hideLoading();
+        } else {
+            const { data, error } = await supabase.auth.signUp({
+                email: `user_${Date.now()}@snapcht.com`,
+                password: Math.random().toString(36).slice(-12)
+            });
+            
+            if(error) {
+                showToast('Connection error. Please refresh.');
+                return;
+            }
+            currentUser = data.user;
+            await Promise.all([
+                loadSuggestedAccounts(),
+                loadMessages(),
+                loadVideos('foryou')
+            ]);
+            hideLoading();
         }
-        if(!localStorage.getItem('snapcht_avatar')) {
-            localStorage.setItem('snapcht_avatar', '👤');
+    }
+    
+    // ==================== LOAD VIDEOS ====================
+    async function loadVideos(type) {
+        currentFeedType = type;
+        let query = supabase.from('videos').select('*');
+        
+        if(type === 'trending') {
+            query = query.order('likes', { ascending: false }).limit(20);
+        } else {
+            query = query.order('created_at', { ascending: false });
         }
-        if(!localStorage.getItem('snapcht_bio')) {
-            localStorage.setItem('snapcht_bio', 'Pencipta kandungan di SnapCht 📱');
+        
+        const { data, error } = await query;
+        
+        if(error) {
+            console.error('Error loading videos:', error);
+            if(error.message.includes('relation') || error.code === '42P01') {
+                await createTablesAndInsertSamples();
+                await loadVideos(type);
+            }
+            return;
         }
-        if(!localStorage.getItem('snapcht_messages')) {
-            localStorage.setItem('snapcht_messages', '[]');
-        }
-        if(!localStorage.getItem('snapcht_myvideos')) {
-            localStorage.setItem('snapcht_myvideos', '[]');
-        }
-
-        // ==================== DATA VIDEO AWAL ====================
-        const defaultVideos = [
-            { id: "1", avatar: "🦊", username: "@mack_martin92", description: "🔥 UI SnapCht beta dah live! Jom explore #SnapCht", music: "original sound - mack_martin", videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-light-looking-at-phone-42023-large.mp4", likes: 12600, comments: "284" },
-            { id: "2", avatar: "🐼", username: "@adona1595", description: "Alam semulajadi yang menenangkan jiwa 🍃 #naturelovers", music: "Calm Piano - Nature Beats", videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-falling-down-48744-large.mp4", likes: 9500, comments: "142" },
-            { id: "3", avatar: "👨‍💻", username: "@dev_farhan", description: "Coding sprint untuk SnapCht 2.0 ✨ #devlife", music: "lofi coding beats", videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-man-working-on-laptop-at-the-office-39846-large.mp4", likes: 5200, comments: "67" },
-            { id: "4", avatar: "🌸", username: "@mia_sarawak", description: "Keindahan senja di Pantai Damai 🌅 #sarawak", music: "Sunset Lover", videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-beautiful-sunset-over-the-ocean-47186-large.mp4", likes: 18700, comments: "523" },
-            { id: "5", avatar: "🎵", username: "@dailyhits", description: "New music alert! Single terbaru 🎸 #music", music: "Original Sound", videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-playing-guitar-on-a-balcony-47416-large.mp4", likes: 34200, comments: "891" }
+        
+        allVideos = data || [];
+        renderFeed();
+    }
+    
+    async function createTablesAndInsertSamples() {
+        showToast('Setting up database...');
+        
+        // Insert sample videos directly (table will be created automatically by Supabase when inserting)
+        const sampleVideos = [
+            { title: "🔥 SnapCht Beta", description: "UI SnapCht beta dah live! Jom explore #SnapCht", video_url: "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-light-looking-at-phone-42023-large.mp4", likes: 12600, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' },
+            { title: "Alam Semulajadi", description: "Keindahan alam yang menenangkan jiwa 🍃", video_url: "https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-falling-down-48744-large.mp4", likes: 9500, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' },
+            { title: "Coding Sprint", description: "Coding untuk SnapCht 2.0 ✨ #devlife", video_url: "https://assets.mixkit.co/videos/preview/mixkit-man-working-on-laptop-at-the-office-39846-large.mp4", likes: 5200, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' },
+            { title: "Sunset Vibes", description: "Keindahan senja di pantai 🌅", video_url: "https://assets.mixkit.co/videos/preview/mixkit-beautiful-sunset-over-the-ocean-47186-large.mp4", likes: 18700, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' },
+            { title: "Music Session", description: "New music alert! 🎸", video_url: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-playing-guitar-on-a-balcony-47416-large.mp4", likes: 34200, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' }
         ];
         
-        if(!localStorage.getItem('snapcht_allvideos')) {
-            localStorage.setItem('snapcht_allvideos', JSON.stringify(defaultVideos));
+        for(const video of sampleVideos) {
+            try {
+                await supabase.from('videos').insert(video);
+            } catch(e) {}
         }
-
-        function getAllVideos() {
-            const myVideos = JSON.parse(localStorage.getItem('snapcht_myvideos') || '[]');
-            const allVideos = JSON.parse(localStorage.getItem('snapcht_allvideos') || '[]');
-            return [...myVideos, ...allVideos];
+    }
+    
+    // ==================== RENDER FEED ====================
+    const feedContainer = document.getElementById('videoFeed');
+    
+    function renderFeed() {
+        if(!allVideos.length) {
+            feedContainer.innerHTML = '<div class="empty-state">📹 Tiada video. Klik + untuk upload!</div>';
+            return;
         }
-
-        function formatLikes(likes) {
-            if (likes >= 1000000) return (likes / 1000000).toFixed(1) + 'M';
-            if (likes >= 1000) return (likes / 1000).toFixed(1) + 'K';
-            return likes.toString();
-        }
-
-        // ==================== RENDER FEED ====================
-        const feedContainer = document.getElementById('videoFeed');
         
-        function renderFeed() {
-            const videos = getAllVideos();
-            feedContainer.innerHTML = videos.map(item => `
-                <div class="video-wrapper" data-id="${item.id}">
-                    <div class="video-card">
-                        <video class="main-video-player" loop muted playsinline preload="metadata">
-                            <source src="${item.videoUrl}" type="video/mp4">
-                        </video>
-                        <div class="video-progress"><div class="progress-fill"></div></div>
-                        <div class="interaction-bar">
-                            <div class="interact-btn" data-action="profile" data-username="${item.username}">
-                                <div class="circle-icon">${item.avatar}<div class="profile-badge">+</div></div>
-                            </div>
-                            <!-- FIX OPTIMASI: Atribut data-likes integer tulen diletakkan di sini -->
-                            <div class="interact-btn like-btn" data-id="${item.id}" data-likes="${item.likes}">
-                                <div class="circle-icon">❤️</div>
-                                <span class="like-count">${formatLikes(item.likes)}</span>
-                            </div>
-                            <div class="interact-btn" data-action="comment" data-id="${item.id}">
-                                <div class="circle-icon">💬</div>
-                                <span>${item.comments}</span>
-                            </div>
-                            <div class="interact-btn" data-action="share">
-                                <div class="circle-icon">🔗</div>
-                                <span>Share</span>
-                            </div>
+        feedContainer.innerHTML = allVideos.map(video => `
+            <div class="video-wrapper" data-id="${video.id}">
+                <div class="video-card">
+                    <video class="main-video-player" loop muted playsinline preload="metadata">
+                        <source src="${escapeHtml(video.video_url)}" type="video/mp4">
+                    </video>
+                    <div class="video-progress"><div class="progress-fill"></div></div>
+                    <div class="interaction-bar">
+                        <div class="interact-btn" data-action="profile" data-username="${escapeHtml(video.username)}">
+                            <div class="circle-icon">👤<div class="profile-badge">+</div></div>
                         </div>
-                        <div class="video-details-box">
-                            <span class="username" data-username="${item.username}">${item.username}</span>
-                            <p class="description">${item.description}</p>
-                            <div class="music-track">🎵 ${item.music}</div>
+                        <div class="interact-btn like-btn" data-id="${video.id}" data-likes="${video.likes}">
+                            <div class="circle-icon">❤️</div>
+                            <span class="like-count">${formatLikes(video.likes)}</span>
+                        </div>
+                        <div class="interact-btn" data-action="comment">
+                            <div class="circle-icon">💬</div>
+                            <span>0</span>
+                        </div>
+                        <div class="interact-btn" data-action="share">
+                            <div class="circle-icon">🔗</div>
+                            <span>Share</span>
                         </div>
                     </div>
+                    <div class="video-details-box">
+                        <span class="username" data-username="${escapeHtml(video.username)}">@${escapeHtml(video.username)}</span>
+                        <p class="description">${escapeHtml(video.description || video.title || 'Tiada kapsyen')}</p>
+                        <div class="music-track">🎵 original sound - ${escapeHtml(video.username)}</div>
+                    </div>
                 </div>
-            `).join('');
-            initVideoPlayers();
-            attachEventListeners();
-        }
-
-        function initVideoPlayers() {
-            const videos = document.querySelectorAll('.main-video-player');
-            
-            // FIX OPTIMASI: Buang observer lama bagi mengelakkan limpahan memori
-            if (currentObserver) {
-                currentObserver.disconnect();
+            </div>
+        `).join('');
+        
+        initVideoPlayers();
+        attachEventListeners();
+    }
+    
+    function initVideoPlayers() {
+        const videos = document.querySelectorAll('.main-video-player');
+        
+        if(currentObserver) currentObserver.disconnect();
+        
+        videos.forEach(video => {
+            const progressFill = video.closest('.video-card')?.querySelector('.progress-fill');
+            if(progressFill) {
+                video.addEventListener('timeupdate', () => {
+                    if(video.duration) progressFill.style.width = (video.currentTime / video.duration) * 100 + '%';
+                });
+                video.addEventListener('ended', () => {
+                    progressFill.style.width = '0%';
+                    video.currentTime = 0;
+                    video.play().catch(()=>{});
+                });
             }
-
-            videos.forEach(video => {
-                const progressFill = video.closest('.video-card')?.querySelector('.progress-fill');
-                if(progressFill) {
-                    video.addEventListener('timeupdate', () => {
-                        if(video.duration) progressFill.style.width = (video.currentTime / video.duration) * 100 + '%';
-                    });
-                    video.addEventListener('ended', () => { progressFill.style.width = '0%'; video.currentTime = 0; video.play().catch(()=>{}); });
-                }
-                
-                video.addEventListener('click', (e) => { 
-                    e.stopPropagation(); 
-                    if (video.paused) {
-                        // FIX: Suara diaktifkan secara global apabila pengguna berinteraksi aktif
-                        video.muted = false;
-                        video.play().catch(()=>{});
-                        showToast("▶️ Dimainkan");
-                    } else {
-                        video.pause();
-                        showToast("⏸ Dijeda");
-                    }
-                });
-                
-                video.addEventListener('dblclick', (e) => { e.stopPropagation(); const likeBtn = video.closest('.video-wrapper')?.querySelector('.like-btn'); if(likeBtn) likeBtn.click(); });
-            });
-
-            const observerOptions = { root: feedContainer, threshold: 0.6 };
-            currentObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => { 
-                    const vid = entry.target;
-                    if (entry.isIntersecting) {
-                        vid.play().catch(()=>{}); 
-                    } else {
-                        vid.pause();
-                    }
-                });
-            }, observerOptions);
             
-            videos.forEach(video => currentObserver.observe(video));
-            setTimeout(() => { if(videos[0]) videos[0].play().catch(()=>{}); }, 500);
+            video.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(video.paused) {
+                    video.muted = false;
+                    video.play().catch(()=>{});
+                    showToast("▶️ Dimainkan");
+                } else {
+                    video.pause();
+                    showToast("⏸ Dijeda");
+                }
+            });
+            
+            video.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const likeBtn = video.closest('.video-wrapper')?.querySelector('.like-btn');
+                if(likeBtn) likeBtn.click();
+            });
+        });
+        
+        const observerOptions = { root: feedContainer, threshold: 0.6 };
+        currentObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const vid = entry.target;
+                if(entry.isIntersecting) {
+                    vid.play().catch(()=>{});
+                } else {
+                    vid.pause();
+                }
+            });
+        }, observerOptions);
+        
+        videos.forEach(video => currentObserver.observe(video));
+        setTimeout(() => { if(videos[0]) videos[0].play().catch(()=>{}); }, 500);
+    }
+    
+    // ==================== LIKE VIDEO ====================
+    async function likeVideo(videoId, currentLikes, btn, countSpan, iconCircle) {
+        const newLikes = currentLikes + 1;
+        
+        countSpan.innerText = formatLikes(newLikes);
+        btn.setAttribute('data-likes', newLikes);
+        iconCircle.style.transform = 'scale(1.2)';
+        iconCircle.classList.add('liked');
+        setTimeout(() => {
+            iconCircle.style.transform = '';
+            setTimeout(() => iconCircle.classList.remove('liked'), 300);
+        }, 200);
+        
+        const { error } = await supabase
+            .from('videos')
+            .update({ likes: newLikes })
+            .eq('id', videoId);
+        
+        if(error) {
+            countSpan.innerText = formatLikes(currentLikes);
+            btn.setAttribute('data-likes', currentLikes);
+            showToast('Gagal like. Cuba lagi.');
+        } else {
+            const videoIndex = allVideos.findIndex(v => v.id === videoId);
+            if(videoIndex !== -1) allVideos[videoIndex].likes = newLikes;
+            showToast('❤️ Disukai!');
         }
-
-        function showToast(msg) {
-            let existing = document.querySelector('.toast-message');
-            if(existing) existing.remove();
-            let toast = document.createElement('div');
-            toast.className = 'toast-message';
-            toast.innerText = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 1800);
-        }
-
-        // ==================== UPLOAD VIDEO ====================
-        function showUploadModal() {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.id = 'uploadModal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header"><h3>🎥 Muat Naik Video</h3><button class="close-modal" onclick="closeModal('uploadModal')">✕</button></div>
-                    <input type="file" id="videoFileInput" accept="video/*" class="modal-input">
-                    <input type="text" id="videoCaption" placeholder="Kapsyen..." class="modal-input">
-                    <select id="videoPrivacy" class="modal-select"><option value="public">🌍 Awam</option><option value="private">🔒 Peribadi</option></select>
-                    <button class="btn-primary" onclick="uploadVideo()">Upload</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        window.uploadVideo = function() {
+    }
+    
+    // ==================== UPLOAD VIDEO ====================
+    async function uploadVideoToSupabase(file, caption) {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { data, error } = await supabase.storage
+            .from('videos')
+            .upload(fileName, file);
+        
+        if(error) throw error;
+        
+        const { data: { publicUrl } } = supabase.storage
+            .from('videos')
+            .getPublicUrl(fileName);
+        
+        const { error: insertError } = await supabase
+            .from('videos')
+            .insert({
+                title: caption.substring(0, 100),
+                description: caption,
+                video_url: publicUrl,
+                likes: 0,
+                user_id: currentUser.id,
+                username: currentUser.email?.split('@')[0] || 'pengguna'
+            });
+        
+        if(insertError) throw insertError;
+        
+        await loadVideos(currentFeedType);
+    }
+    
+    function showUploadModal() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'uploadModal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header"><h3>🎥 Muat Naik Video</h3><button class="close-modal" onclick="closeModal('uploadModal')">✕</button></div>
+                <input type="file" id="videoFileInput" accept="video/*" class="modal-input">
+                <input type="text" id="videoCaption" placeholder="Kapsyen..." class="modal-input">
+                <button class="btn-primary" id="uploadBtn">Upload</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('uploadBtn').onclick = async () => {
             const fileInput = document.getElementById('videoFileInput');
             const caption = document.getElementById('videoCaption').value || "Tiada kapsyen";
             if(!fileInput.files[0]) { showToast('📁 Pilih video terlebih dahulu'); return; }
             const file = fileInput.files[0];
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const newVideo = {
-                    id: Date.now().toString(),
-                    videoUrl: e.target.result,
-                    avatar: localStorage.getItem('snapcht_avatar') || '👤',
-                    username: localStorage.getItem('snapcht_username'),
-                    description: caption,
-                    music: "original sound",
-                    likes: 0,
-                    comments: "0"
-                };
-                let myVideos = JSON.parse(localStorage.getItem('snapcht_myvideos') || '[]');
-                myVideos.unshift(newVideo);
-                localStorage.setItem('snapcht_myvideos', JSON.stringify(myVideos));
+            if(file.size > 20 * 1024 * 1024) { showToast('❌ Video terlalu besar! Maksimum 20MB'); return; }
+            
+            showToast('📤 Sedang upload...');
+            modal.querySelector('#uploadBtn').disabled = true;
+            
+            try {
+                await uploadVideoToSupabase(file, caption);
                 showToast('✅ Video berjaya dimuat naik!');
                 closeModal('uploadModal');
-                renderFeed();
-            };
-            reader.readAsDataURL(file);
+            } catch(err) {
+                console.error(err);
+                showToast('❌ Gagal upload. Cuba lagi.');
+                modal.querySelector('#uploadBtn').disabled = false;
+            }
         };
-
-        // ==================== PROFILE ====================
-        function showProfile() {
-            const currentUser = localStorage.getItem('snapcht_username');
-            const avatar = localStorage.getItem('snapcht_avatar');
-            const bio = localStorage.getItem('snapcht_bio');
-            const myVideos = JSON.parse(localStorage.getItem('snapcht_myvideos') || '[]');
-            const totalLikes = myVideos.reduce((sum, v) => sum + (v.likes || 0), 0);
+    }
+    
+    // ==================== MY VIDEOS ====================
+    async function loadMyVideos() {
+        const { data, error } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false });
+        
+        if(error) {
+            showToast('Error loading your videos');
+            return;
+        }
+        
+        allVideos = data || [];
+        renderFeed();
+    }
+    
+    // ==================== SUGGESTED ACCOUNTS ====================
+    async function loadSuggestedAccounts() {
+        const { data, error } = await supabase
+            .from('videos')
+            .select('username')
+            .neq('user_id', currentUser?.id)
+            .limit(5);
+        
+        if(error) return;
+        
+        const uniqueUsers = [...new Map(data.map(u => [u.username, u])).values()];
+        const container = document.getElementById('suggestedAccounts');
+        if(container) {
+            container.innerHTML = uniqueUsers.map(user => `
+                <div class="account-item" data-username="${escapeHtml(user.username)}">
+                    <div class="avatar-box">👤</div>
+                    <div class="account-name">${escapeHtml(user.username)}</div>
+                </div>
+            `).join('') || '<p style="color:#777; padding:10px;">Tiada akaun lain</p>';
             
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.id = 'profileModal';
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width:500px;">
-                    <div class="modal-header"><h3>👤 Profil Saya</h3><button class="close-modal" onclick="closeModal('profileModal')">✕</button></div>
-                    <div style="text-align:center; margin-bottom:20px;">
-                        <div style="font-size:64px; margin-bottom:8px;">${avatar}</div>
-                        <input type="text" id="editUsername" value="${currentUser}" class="modal-input" style="text-align:center;">
-                        <textarea id="editBio" rows="2" class="modal-input">${bio}</textarea>
-                        <input type="text" id="editAvatar" placeholder="Emoji avatar (contoh: 🦊)" class="modal-input" maxlength="2">
-                        <button class="btn-primary" onclick="saveProfile()">💾 Simpan Profil</button>
+            document.querySelectorAll('.account-item').forEach(acc => {
+                acc.addEventListener('click', () => {
+                    const username = acc.getAttribute('data-username');
+                    showToast(`👤 Profil ${username}`);
+                    showInbox();
+                    setTimeout(() => openChat(username), 100);
+                });
+            });
+        }
+    }
+    
+    // ==================== INBOX & MESSAGES ====================
+    async function loadMessages() {
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .or(`from_user.eq.${currentUser.id},to_user.eq.${currentUser.id}`);
+        
+        if(error) {
+            if(error.code === '42P01') {
+                await createMessagesTable();
+            }
+            return;
+        }
+        
+        const unread = data.filter(m => m.to_user === currentUser.id && !m.read).length;
+        unreadMessages = unread;
+        updateInboxBadge();
+    }
+    
+    async function createMessagesTable() {
+        // Messages will be created when first message is sent
+    }
+    
+    function updateInboxBadge() {
+        const inboxNav = document.querySelector('[data-mnav="inbox"]');
+        if(inboxNav && unreadMessages > 0) {
+            let badge = inboxNav.querySelector('.notification-badge');
+            if(!badge) {
+                badge = document.createElement('span');
+                badge.className = 'notification-badge';
+                inboxNav.appendChild(badge);
+            }
+            badge.textContent = unreadMessages > 9 ? '9+' : unreadMessages;
+        }
+    }
+    
+    async function sendMessage(toUsername, text) {
+        const { data: userData } = await supabase
+            .from('videos')
+            .select('user_id')
+            .eq('username', toUsername)
+            .limit(1);
+        
+        const toUserId = userData?.[0]?.user_id;
+        if(!toUserId) return;
+        
+        const { error } = await supabase
+            .from('messages')
+            .insert({
+                from_user: currentUser.id,
+                to_user: toUserId,
+                message: text,
+                read: false
+            });
+        
+        if(error) {
+            showToast('Gagal hantar mesej');
+        } else {
+            showToast('💌 Mesej dihantar');
+            await loadMessages();
+        }
+    }
+    
+    function showInbox() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'inboxModal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:450px; height:80vh; display:flex; flex-direction:column;">
+                <div class="modal-header"><h3>💬 Mesej</h3><button class="close-modal" onclick="closeModal('inboxModal')">✕</button></div>
+                <div id="chatListView" style="flex:1; overflow-y:auto;">
+                    <p style="color:#777; text-align:center; padding:20px;">Klik pada akaun di sidebar untuk mulakan chat</p>
+                </div>
+                <div id="chatView" style="display:none; flex:1; flex-direction:column;">
+                    <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
+                        <button onclick="backToChatList()" style="background:#333; border:none; padding:8px 16px; border-radius:20px; color:white; cursor:pointer;">← Kembali</button>
+                        <span id="chatWithUser" style="font-weight:bold;"></span>
                     </div>
-                    <div style="display:flex; justify-content:space-around; background:#0a0a0a; border-radius:16px; padding:16px; margin-bottom:20px;">
-                        <div style="text-align:center;"><div style="font-size:24px; font-weight:bold;">${myVideos.length}</div><div style="color:#777;">Video</div></div>
-                        <div style="text-align:center;"><div style="font-size:24px; font-weight:bold;">${totalLikes}</div><div style="color:#777;">Jumlah Like</div></div>
-                    </div>
-                    <h4 style="margin-bottom:12px;">📹 Video Saya</h4>
-                    <div id="myVideosList">
-                        ${myVideos.map(v => `
-                            <div style="background:#0a0a0a; border-radius:12px; padding:12px; margin-bottom:8px; display:flex; gap:12px; align-items:center;">
-                                <video src="${v.videoUrl}" style="width:60px; height:80px; object-fit:cover; border-radius:8px;"></video>
-                                <div style="flex:1;"><p style="font-size:0.8rem;">${v.description.substring(0,40)}</p><small>❤️ ${formatLikes(v.likes)}</small></div>
-                                <button onclick="deleteVideo('${v.id}')" style="background:#fe2c55; border:none; padding:6px 12px; border-radius:20px; color:white; cursor:pointer;">Padam</button>
-                            </div>
-                        `).join('') || '<p style="color:#777;">Tiada video. Klik + untuk muat naik!</p>'}
+                    <div id="chatMessages" class="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="messageInput" class="chat-input" placeholder="Taip mesej...">
+                        <button onclick="sendChatMessage()" style="background:#fe2c55; border:none; padding:12px 20px; border-radius:24px; color:white; cursor:pointer;">Hantar</button>
                     </div>
                 </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        window.saveProfile = function() {
-            const newUsername = document.getElementById('editUsername').value;
-            const newBio = document.getElementById('editBio').value;
-            const newAvatar = document.getElementById('editAvatar').value;
-            if(newUsername) localStorage.setItem('snapcht_username', newUsername);
-            localStorage.setItem('snapcht_bio', newBio);
-            if(newAvatar) localStorage.setItem('snapcht_avatar', newAvatar);
-            showToast('✅ Profil dikemaskini!');
-            closeModal('profileModal');
-            renderFeed();
-        };
-
-        window.deleteVideo = function(videoId) {
-            let myVideos = JSON.parse(localStorage.getItem('snapcht_myvideos') || '[]');
-            myVideos = myVideos.filter(v => v.id !== videoId);
-            localStorage.setItem('snapcht_myvideos', JSON.stringify(myVideos));
-            showToast('🗑️ Video dipadam');
-            closeModal('profileModal');
-            showProfile();
-            renderFeed();
-        };
-
-        // ==================== INBOX ====================
-        let currentChatUser = null;
-
-        function showInbox() {
-            const currentUser = localStorage.getItem('snapcht_username');
-            const messages = JSON.parse(localStorage.getItem('snapcht_messages') || '[]');
-            const contacts = [...new Set(messages.map(m => m.from === currentUser ? m.to : m.from))];
-            
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.id = 'inboxModal';
-            modal.innerHTML = `
-                <div class="modal-content" style="max-width:450px; height:80vh; display:flex; flex-direction:column;">
-                    <div class="modal-header"><h3>💬 Mesej</h3><button class="close-modal" onclick="closeModal('inboxModal')">✕</button></div>
-                    <div id="chatListView" style="flex:1; overflow-y:auto;">
-                        ${contacts.length ? contacts.map(c => `
-                            <div onclick="openChat('${c}')" style="padding:12px; background:#0a0a0a; border-radius:12px; margin-bottom:8px; cursor:pointer;">
-                                <span style="font-weight:bold;">${c}</span>
-                            </div>
-                        `).join('') : '<p style="color:#777;">Tiada perbualan. Mula chat dengan memilih akaun di menu tepi!</p>'}
-                    </div>
-                    <div id="chatView" style="display:none; flex:1; flex-direction:column;">
-                        <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-                            <button onclick="backToChatList()" style="background:#333; border:none; padding:8px 16px; border-radius:20px; color:white; cursor:pointer;">← Kembali</button>
-                            <span id="chatWithUser" style="font-weight:bold;"></span>
-                        </div>
-                        <div id="chatMessages" class="chat-messages" style="flex:1;"></div>
-                        <div class="chat-input-area">
-                            <input type="text" id="messageInput" class="chat-input" placeholder="Taip mesej...">
-                            <button onclick="sendMessage()" style="background:#fe2c55; border:none; padding:12px 20px; border-radius:24px; color:white; cursor:pointer;">Hantar</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        window.openChat = function(username) {
-            currentChatUser = username;
-            document.getElementById('chatListView').style.display = 'none';
-            document.getElementById('chatView').style.display = 'flex';
-            document.getElementById('chatWithUser').innerText = username;
-            loadChatMessages();
-        };
-
-        window.backToChatList = function() {
-            document.getElementById('chatView').style.display = 'none';
-            document.getElementById('chatListView').style.display = 'block';
-        };
-
-        function loadChatMessages() {
-            const currentUser = localStorage.getItem('snapcht_username');
-            const allMessages = JSON.parse(localStorage.getItem('snapcht_messages') || '[]');
-            const chatMessages = allMessages.filter(m => 
-                (m.from === currentUser && m.to === currentChatUser) ||
-                (m.from === currentChatUser && m.to === currentUser)
-            );
-            const container = document.getElementById('chatMessages');
-            container.innerHTML = chatMessages.map(msg => `
-                <div class="message-bubble ${msg.from === currentUser ? 'sent' : 'received'}">
-                    <div class="message-sender">${msg.from}</div>
-                    <div class="message-text">${msg.text}</div>
-                    <div style="font-size:0.6rem; opacity:0.5; margin-top:2px;">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    window.openChat = async function(username) {
+        currentChatUser = username;
+        const chatListView = document.getElementById('chatListView');
+        const chatView = document.getElementById('chatView');
+        if(chatListView) chatListView.style.display = 'none';
+        if(chatView) chatView.style.display = 'flex';
+        const chatWithUserSpan = document.getElementById('chatWithUser');
+        if(chatWithUserSpan) chatWithUserSpan.innerText = username;
+        await loadChatMessages();
+    };
+    
+    window.backToChatList = function() {
+        const chatView = document.getElementById('chatView');
+        const chatListView = document.getElementById('chatListView');
+        if(chatView) chatView.style.display = 'none';
+        if(chatListView) chatListView.style.display = 'block';
+    };
+    
+    async function loadChatMessages() {
+        const { data: userData } = await supabase
+            .from('videos')
+            .select('user_id')
+            .eq('username', currentChatUser)
+            .limit(1);
+        
+        const otherUserId = userData?.[0]?.user_id;
+        if(!otherUserId) return;
+        
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .or(`and(from_user.eq.${currentUser.id},to_user.eq.${otherUserId}),and(from_user.eq.${otherUserId},to_user.eq.${currentUser.id})`)
+            .order('created_at', { ascending: true });
+        
+        if(error) return;
+        
+        const container = document.getElementById('chatMessages');
+        if(container) {
+            container.innerHTML = data.map(msg => `
+                <div class="message-bubble ${msg.from_user === currentUser.id ? 'sent' : 'received'}">
+                    <div class="message-sender">${msg.from_user === currentUser.id ? 'Anda' : currentChatUser}</div>
+                    <div class="message-text">${escapeHtml(msg.message)}</div>
+                    <div style="font-size:0.6rem; opacity:0.5; margin-top:2px;">${new Date(msg.created_at).toLocaleTimeString()}</div>
                 </div>
             `).join('');
             container.scrollTop = container.scrollHeight;
         }
-
-        window.sendMessage = function() {
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if(!text) return;
-            const currentUser = localStorage.getItem('snapcht_username');
-            const message = {
-                id: Date.now().toString(),
-                from: currentUser,
-                to: currentChatUser,
-                text: text,
-                timestamp: new Date().toISOString()
-            };
-            let messages = JSON.parse(localStorage.getItem('snapcht_messages') || '[]');
-            messages.push(message);
-            localStorage.setItem('snapcht_messages', JSON.stringify(messages));
-            input.value = '';
-            loadChatMessages();
-            showToast('💌 Mesej dihantar');
-        };
-
-        // ==================== UTILITY ====================
-        window.closeModal = function(modalId) {
-            const modal = document.getElementById(modalId);
-            if(modal) modal.remove();
-        };
-
-        function attachEventListeners() {
-            // FIX OPTIMASI: Pengepala Like tulen berasaskan data-likes
-            document.querySelectorAll('.like-btn').forEach(btn => {
-                let liked = false;
-                const countSpan = btn.querySelector('.like-count');
-                const iconCircle = btn.querySelector('.circle-icon');
-                
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if(!liked) {
-                        let currentLikes = parseInt(btn.getAttribute('data-likes')) || 0;
-                        let newCount = currentLikes + 1;
-                        
-                        countSpan.innerText = formatLikes(newCount);
-                        btn.setAttribute('data-likes', newCount);
-
-                        iconCircle.style.transform = 'scale(1.2)';
-                        iconCircle.classList.add('liked');
-                        setTimeout(() => { 
-                            iconCircle.style.transform = ''; 
-                            setTimeout(() => iconCircle.classList.remove('liked'), 300); 
-                        }, 200);
-                        liked = true;
-                        showToast('❤️ Disukai!');
-                    } else showToast('Anda sudah suka video ini');
-                });
+        
+        await supabase
+            .from('messages')
+            .update({ read: true })
+            .eq('to_user', currentUser.id)
+            .eq('from_user', otherUserId);
+        
+        await loadMessages();
+    }
+    
+    window.sendChatMessage = async function() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+        if(!text) return;
+        
+        await sendMessage(currentChatUser, text);
+        input.value = '';
+        await loadChatMessages();
+    };
+    
+    // ==================== PROFILE ====================
+    function showProfile() {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'profileModal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header"><h3>👤 Profil</h3><button class="close-modal" onclick="closeModal('profileModal')">✕</button></div>
+                <div style="text-align:center;">
+                    <div style="font-size:64px; margin-bottom:12px;">👤</div>
+                    <p><strong>${escapeHtml(currentUser?.email?.split('@')[0] || 'Pengguna')}</strong></p>
+                    <p style="color:#777; font-size:0.8rem;">ID: ${currentUser?.id?.substring(0, 8)}...</p>
+                    <button class="btn-secondary" onclick="closeModal('profileModal')" style="margin-top:16px;">Tutup</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // ==================== EVENT LISTENERS ====================
+    function attachEventListeners() {
+        document.querySelectorAll('.like-btn').forEach(btn => {
+            let liked = false;
+            const countSpan = btn.querySelector('.like-count');
+            const iconCircle = btn.querySelector('.circle-icon');
+            
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if(!liked) {
+                    const videoId = btn.getAttribute('data-id');
+                    const currentLikes = parseInt(btn.getAttribute('data-likes')) || 0;
+                    await likeVideo(videoId, currentLikes, btn, countSpan, iconCircle);
+                    liked = true;
+                } else {
+                    showToast('Anda sudah suka video ini');
+                }
             });
-
-            document.querySelectorAll('.interact-btn[data-action="share"]').forEach(btn => {
-                btn.addEventListener('click', (e) => { e.stopPropagation(); showToast('🔗 Pautan disalin'); navigator.clipboard?.writeText('https://snapcht.app'); });
+        });
+        
+        document.querySelectorAll('.interact-btn[data-action="share"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showToast('🔗 Pautan disalin');
+                navigator.clipboard?.writeText(window.location.href);
             });
-
-            document.querySelectorAll('.interact-btn[data-action="comment"]').forEach(btn => {
-                btn.addEventListener('click', (e) => { e.stopPropagation(); showToast('💬 Ruangan komen akan dibuka tidak lama lagi'); });
+        });
+        
+        document.querySelectorAll('.interact-btn[data-action="comment"], .interact-btn[data-action="profile"], .username').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showToast('✨ Feature akan datang!');
             });
-
-            document.querySelectorAll('.interact-btn[data-action="profile"], .username').forEach(el => {
-                el.addEventListener('click', (e) => { e.stopPropagation(); showToast('✨ Ikuti kreator untuk lebih video menarik!'); });
+        });
+        
+        document.querySelectorAll('.top-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const type = tab.getAttribute('data-tab');
+                if(type === 'trending') {
+                    loadVideos('trending');
+                } else {
+                    loadVideos('foryou');
+                }
             });
-
-            document.querySelectorAll('.top-tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.top-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    showToast(tab.innerText === 'Following' ? '👥 Mod Following' : '🔥 For You');
-                });
+        });
+        
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                const nav = item.getAttribute('data-nav');
+                if(nav === 'myvideos') loadMyVideos();
+                else if(nav === 'trending') loadVideos('trending');
+                else loadVideos('foryou');
             });
-
-            document.querySelectorAll('.menu-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
-                    item.classList.add('active');
-                    if(item.getAttribute('data-nav') === 'liked') showProfile();
-                    else showToast(`📱 ${item.innerText.trim()}`);
-                });
+        });
+        
+        document.getElementById('searchBtn')?.addEventListener('click', () => showToast('🔍 Fungsi carian akan tiba'));
+        
+        document.querySelectorAll('[data-mnav]').forEach(nav => {
+            nav.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('[data-mnav]').forEach(n => n.classList.remove('active'));
+                nav.classList.add('active');
+                const action = nav.getAttribute('data-mnav');
+                if(action === 'create') showUploadModal();
+                else if(action === 'profile') showProfile();
+                else if(action === 'inbox') showInbox();
+                else if(action === 'trending') loadVideos('trending');
+                else loadVideos('foryou');
             });
-
-            document.querySelectorAll('.account-item').forEach(acc => {
-                acc.addEventListener('click', () => { 
-                    const name = acc.querySelector('.account-name')?.innerText; 
-                    showToast(`👤 Profil ${name}`); 
-                    showInbox();
-                    openChat(name); 
-                });
-            });
-
-            document.getElementById('searchBtn')?.addEventListener('click', () => showToast('🔍 Fungsi carian akan tiba'));
-
-            document.querySelectorAll('[data-mnav]').forEach(nav => {
-                nav.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    document.querySelectorAll('[data-mnav]').forEach(n => n.classList.remove('active'));
-                    nav.classList.add('active');
-                    const action = nav.getAttribute('data-mnav');
-                    if(action === 'create') showUploadModal();
-                    else if(action === 'inbox') showInbox();
-                    else if(action === 'profile') showProfile();
-                    else if(action === 'discover') showToast('🧭 Terokai trending & hashtag');
-                    else showToast('🏠 Halaman utama');
-                });
-            });
-        }
-
-        renderFeed();
-    })();
+        });
+    }
+    
+    // ==================== INIT ====================
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if(modal) modal.remove();
+    };
+    
+    initAuth();
 </script>
 </body>
 </html>
