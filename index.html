@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SnapCht · Video Pendek Masa Kini · Supabase</title>
+    <title>SnapCht · Video Pendek · Supabase</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -49,12 +49,10 @@
             to { transform: rotate(360deg); }
         }
 
-        /* SCROLLBAR */
         .sidebar-left::-webkit-scrollbar { width: 4px; }
         .sidebar-left::-webkit-scrollbar-track { background: #1a1a1a; }
         .sidebar-left::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 10px; }
 
-        /* HEADER */
         .app-header {
             position: fixed;
             top: 0;
@@ -124,7 +122,6 @@
         }
         .header-right:active { transform: scale(0.95); }
 
-        /* MAIN WRAPPER */
         .main-wrapper {
             position: absolute;
             top: 64px;
@@ -134,7 +131,6 @@
             overflow: hidden;
         }
 
-        /* SIDEBAR */
         .sidebar-left {
             width: 280px;
             background: #000000;
@@ -170,7 +166,6 @@
         .menu-item.active { background: #1e1e2a; color: #fe2c55; }
         .menu-item .menu-icon { font-size: 1.35rem; width: 28px; }
 
-        /* NOTIFICATION BADGE */
         .notification-badge {
             background: #fe2c55;
             border-radius: 50%;
@@ -209,7 +204,6 @@
         .footer-links a { color: #7c7c82; text-decoration: none; font-size: 0.7rem; }
         .copyright-text { font-size: 0.65rem; color: #5c5c62; margin-top: 20px; }
 
-        /* FEED VIDEO */
         .content-center {
             flex: 1;
             background: #010101;
@@ -259,7 +253,6 @@
             cursor: pointer;
         }
 
-        /* INTERACTION BAR */
         .interaction-bar {
             position: absolute;
             right: 12px;
@@ -310,7 +303,6 @@
         }
         .interact-btn span { font-size: 0.7rem; font-weight: 600; color: #efefef; }
 
-        /* VIDEO DETAILS */
         .video-details-box {
             position: absolute;
             left: 16px;
@@ -335,7 +327,6 @@
         .description { font-size: 0.85rem; line-height: 1.35; margin-bottom: 6px; }
         .music-track { font-size: 0.75rem; display: flex; align-items: center; gap: 5px; opacity: 0.9; }
 
-        /* PROGRESS BAR */
         .video-progress {
             position: absolute;
             bottom: 0;
@@ -352,7 +343,6 @@
             transition: width 0.1s linear;
         }
 
-        /* MOBILE NAVIGATION */
         .mobile-nav-bar {
             position: fixed;
             bottom: 0;
@@ -398,7 +388,6 @@
             box-shadow: 0 4px 12px rgba(254,44,85,0.4);
         }
 
-        /* MODAL STYLES */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -417,7 +406,7 @@
             border-radius: 24px;
             padding: 24px;
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
             max-height: 80vh;
             overflow-y: auto;
             border: 1px solid rgba(255,255,255,0.1);
@@ -456,56 +445,16 @@
             cursor: pointer;
             width: 100%;
         }
-        .btn-secondary {
-            background: #333;
+        .btn-danger {
+            background: #dc2626;
             border: none;
-            padding: 12px;
-            border-radius: 40px;
+            padding: 8px 16px;
+            border-radius: 20px;
             color: white;
             cursor: pointer;
+            font-size: 0.8rem;
         }
 
-        /* CHAT STYLES */
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            background: #0a0a0a;
-            border-radius: 16px;
-            margin-bottom: 12px;
-            min-height: 250px;
-            max-height: 350px;
-        }
-        .message-bubble {
-            margin-bottom: 12px;
-            display: flex;
-            flex-direction: column;
-        }
-        .message-bubble.sent { align-items: flex-end; }
-        .message-bubble.received { align-items: flex-start; }
-        .message-text {
-            max-width: 80%;
-            padding: 10px 14px;
-            border-radius: 18px;
-            background: #2a2a2a;
-            font-size: 0.9rem;
-        }
-        .message-bubble.sent .message-text { background: #fe2c55; }
-        .message-sender { font-size: 0.7rem; opacity: 0.7; margin-bottom: 4px; }
-        .chat-input-area {
-            display: flex;
-            gap: 8px;
-        }
-        .chat-input {
-            flex: 1;
-            padding: 12px;
-            background: #2a2a2a;
-            border: none;
-            border-radius: 24px;
-            color: white;
-        }
-
-        /* TOAST */
         .toast-message {
             position: fixed;
             bottom: 100px;
@@ -531,6 +480,23 @@
             padding: 40px;
             color: #777;
         }
+
+        .video-list-item {
+            background: #0a0a0a;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .video-thumb {
+            width: 80px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #1a1a1a;
+        }
     </style>
 </head>
 <body>
@@ -546,7 +512,7 @@
     </div>
     <div class="header-center">
         <div class="top-tabs">
-            <div class="top-tab" data-tab="foryou">For You</div>
+            <div class="top-tab active" data-tab="foryou">For You</div>
             <div class="top-tab" data-tab="trending">Trending</div>
         </div>
     </div>
@@ -584,7 +550,6 @@
     <div class="nav-item-box active" data-mnav="home"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></div>
     <div class="nav-item-box" data-mnav="trending"><span class="nav-icon">🔥</span><span class="nav-label">Trending</span></div>
     <div class="nav-item-box" data-mnav="create"><div class="create-btn-wrapper">+</div></div>
-    <div class="nav-item-box" data-mnav="inbox"><span class="nav-icon">💬</span><span class="nav-label">Inbox</span></div>
     <div class="nav-item-box" data-mnav="profile"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></div>
 </nav>
 
@@ -600,8 +565,6 @@
     let currentObserver = null;
     let allVideos = [];
     let currentFeedType = 'foryou';
-    let unreadMessages = 0;
-    let currentChatUser = null;
     
     // ==================== HELPER FUNCTIONS ====================
     function showToast(msg) {
@@ -643,7 +606,6 @@
             currentUser = session.user;
             await Promise.all([
                 loadSuggestedAccounts(),
-                loadMessages(),
                 loadVideos('foryou')
             ]);
             hideLoading();
@@ -660,7 +622,6 @@
             currentUser = data.user;
             await Promise.all([
                 loadSuggestedAccounts(),
-                loadMessages(),
                 loadVideos('foryou')
             ]);
             hideLoading();
@@ -696,7 +657,6 @@
     async function createTablesAndInsertSamples() {
         showToast('Setting up database...');
         
-        // Insert sample videos directly (table will be created automatically by Supabase when inserting)
         const sampleVideos = [
             { title: "🔥 SnapCht Beta", description: "UI SnapCht beta dah live! Jom explore #SnapCht", video_url: "https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-light-looking-at-phone-42023-large.mp4", likes: 12600, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' },
             { title: "Alam Semulajadi", description: "Keindahan alam yang menenangkan jiwa 🍃", video_url: "https://assets.mixkit.co/videos/preview/mixkit-tree-with-yellow-flowers-falling-down-48744-large.mp4", likes: 9500, user_id: currentUser?.id, username: currentUser?.email?.split('@')[0] || 'creator' },
@@ -710,6 +670,90 @@
                 await supabase.from('videos').insert(video);
             } catch(e) {}
         }
+    }
+    
+    // ==================== DELETE VIDEO ====================
+    async function deleteVideo(videoId, videoUrl) {
+        if(!confirm('Padam video ini? Tindakan ini tidak boleh dibatalkan.')) return;
+        
+        // Extract filename from URL
+        const fileName = videoUrl.split('/').pop();
+        
+        // Delete from storage
+        if(fileName && !videoUrl.includes('mixkit')) {
+            await supabase.storage.from('videos').remove([fileName]);
+        }
+        
+        // Delete from database
+        const { error } = await supabase
+            .from('videos')
+            .delete()
+            .eq('id', videoId)
+            .eq('user_id', currentUser.id);
+        
+        if(error) {
+            showToast('Gagal padam video');
+        } else {
+            showToast('🗑️ Video dipadam');
+            await loadVideos(currentFeedType);
+            if(currentFeedType === 'myvideos') await loadMyVideos();
+        }
+    }
+    
+    // ==================== MY VIDEOS ====================
+    async function loadMyVideos() {
+        const { data, error } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .order('created_at', { ascending: false });
+        
+        if(error) {
+            showToast('Error loading your videos');
+            return;
+        }
+        
+        allVideos = data || [];
+        renderMyVideosFeed();
+    }
+    
+    function renderMyVideosFeed() {
+        if(!allVideos.length) {
+            feedContainer.innerHTML = '<div class="empty-state">📹 Anda belum upload sebarang video. Klik + untuk muat naik!</div>';
+            return;
+        }
+        
+        feedContainer.innerHTML = allVideos.map(video => `
+            <div class="video-wrapper" data-id="${video.id}">
+                <div class="video-card">
+                    <video class="main-video-player" loop muted playsinline preload="metadata">
+                        <source src="${escapeHtml(video.video_url)}" type="video/mp4">
+                    </video>
+                    <div class="video-progress"><div class="progress-fill"></div></div>
+                    <div class="interaction-bar">
+                        <div class="interact-btn" data-action="profile" data-username="${escapeHtml(video.username)}">
+                            <div class="circle-icon">👤<div class="profile-badge">+</div></div>
+                        </div>
+                        <div class="interact-btn like-btn" data-id="${video.id}" data-likes="${video.likes}">
+                            <div class="circle-icon">❤️</div>
+                            <span class="like-count">${formatLikes(video.likes)}</span>
+                        </div>
+                        <div class="interact-btn" data-action="delete" data-id="${video.id}" data-url="${escapeHtml(video.video_url)}">
+                            <div class="circle-icon">🗑️</div>
+                            <span>Padam</span>
+                        </div>
+                    </div>
+                    <div class="video-details-box">
+                        <span class="username" data-username="${escapeHtml(video.username)}">@${escapeHtml(video.username)}</span>
+                        <p class="description">${escapeHtml(video.description || video.title || 'Tiada kapsyen')}</p>
+                        <div class="music-track">🎵 original sound - ${escapeHtml(video.username)}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        initVideoPlayers();
+        attachMyVideosListeners();
     }
     
     // ==================== RENDER FEED ====================
@@ -905,23 +949,6 @@
         };
     }
     
-    // ==================== MY VIDEOS ====================
-    async function loadMyVideos() {
-        const { data, error } = await supabase
-            .from('videos')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false });
-        
-        if(error) {
-            showToast('Error loading your videos');
-            return;
-        }
-        
-        allVideos = data || [];
-        renderFeed();
-    }
-    
     // ==================== SUGGESTED ACCOUNTS ====================
     async function loadSuggestedAccounts() {
         const { data, error } = await supabase
@@ -941,187 +968,29 @@
                     <div class="account-name">${escapeHtml(user.username)}</div>
                 </div>
             `).join('') || '<p style="color:#777; padding:10px;">Tiada akaun lain</p>';
-            
-            document.querySelectorAll('.account-item').forEach(acc => {
-                acc.addEventListener('click', () => {
-                    const username = acc.getAttribute('data-username');
-                    showToast(`👤 Profil ${username}`);
-                    showInbox();
-                    setTimeout(() => openChat(username), 100);
-                });
-            });
         }
     }
-    
-    // ==================== INBOX & MESSAGES ====================
-    async function loadMessages() {
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .or(`from_user.eq.${currentUser.id},to_user.eq.${currentUser.id}`);
-        
-        if(error) {
-            if(error.code === '42P01') {
-                await createMessagesTable();
-            }
-            return;
-        }
-        
-        const unread = data.filter(m => m.to_user === currentUser.id && !m.read).length;
-        unreadMessages = unread;
-        updateInboxBadge();
-    }
-    
-    async function createMessagesTable() {
-        // Messages will be created when first message is sent
-    }
-    
-    function updateInboxBadge() {
-        const inboxNav = document.querySelector('[data-mnav="inbox"]');
-        if(inboxNav && unreadMessages > 0) {
-            let badge = inboxNav.querySelector('.notification-badge');
-            if(!badge) {
-                badge = document.createElement('span');
-                badge.className = 'notification-badge';
-                inboxNav.appendChild(badge);
-            }
-            badge.textContent = unreadMessages > 9 ? '9+' : unreadMessages;
-        }
-    }
-    
-    async function sendMessage(toUsername, text) {
-        const { data: userData } = await supabase
-            .from('videos')
-            .select('user_id')
-            .eq('username', toUsername)
-            .limit(1);
-        
-        const toUserId = userData?.[0]?.user_id;
-        if(!toUserId) return;
-        
-        const { error } = await supabase
-            .from('messages')
-            .insert({
-                from_user: currentUser.id,
-                to_user: toUserId,
-                message: text,
-                read: false
-            });
-        
-        if(error) {
-            showToast('Gagal hantar mesej');
-        } else {
-            showToast('💌 Mesej dihantar');
-            await loadMessages();
-        }
-    }
-    
-    function showInbox() {
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.id = 'inboxModal';
-        modal.innerHTML = `
-            <div class="modal-content" style="max-width:450px; height:80vh; display:flex; flex-direction:column;">
-                <div class="modal-header"><h3>💬 Mesej</h3><button class="close-modal" onclick="closeModal('inboxModal')">✕</button></div>
-                <div id="chatListView" style="flex:1; overflow-y:auto;">
-                    <p style="color:#777; text-align:center; padding:20px;">Klik pada akaun di sidebar untuk mulakan chat</p>
-                </div>
-                <div id="chatView" style="display:none; flex:1; flex-direction:column;">
-                    <div style="display:flex; gap:12px; align-items:center; margin-bottom:12px;">
-                        <button onclick="backToChatList()" style="background:#333; border:none; padding:8px 16px; border-radius:20px; color:white; cursor:pointer;">← Kembali</button>
-                        <span id="chatWithUser" style="font-weight:bold;"></span>
-                    </div>
-                    <div id="chatMessages" class="chat-messages"></div>
-                    <div class="chat-input-area">
-                        <input type="text" id="messageInput" class="chat-input" placeholder="Taip mesej...">
-                        <button onclick="sendChatMessage()" style="background:#fe2c55; border:none; padding:12px 20px; border-radius:24px; color:white; cursor:pointer;">Hantar</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-    
-    window.openChat = async function(username) {
-        currentChatUser = username;
-        const chatListView = document.getElementById('chatListView');
-        const chatView = document.getElementById('chatView');
-        if(chatListView) chatListView.style.display = 'none';
-        if(chatView) chatView.style.display = 'flex';
-        const chatWithUserSpan = document.getElementById('chatWithUser');
-        if(chatWithUserSpan) chatWithUserSpan.innerText = username;
-        await loadChatMessages();
-    };
-    
-    window.backToChatList = function() {
-        const chatView = document.getElementById('chatView');
-        const chatListView = document.getElementById('chatListView');
-        if(chatView) chatView.style.display = 'none';
-        if(chatListView) chatListView.style.display = 'block';
-    };
-    
-    async function loadChatMessages() {
-        const { data: userData } = await supabase
-            .from('videos')
-            .select('user_id')
-            .eq('username', currentChatUser)
-            .limit(1);
-        
-        const otherUserId = userData?.[0]?.user_id;
-        if(!otherUserId) return;
-        
-        const { data, error } = await supabase
-            .from('messages')
-            .select('*')
-            .or(`and(from_user.eq.${currentUser.id},to_user.eq.${otherUserId}),and(from_user.eq.${otherUserId},to_user.eq.${currentUser.id})`)
-            .order('created_at', { ascending: true });
-        
-        if(error) return;
-        
-        const container = document.getElementById('chatMessages');
-        if(container) {
-            container.innerHTML = data.map(msg => `
-                <div class="message-bubble ${msg.from_user === currentUser.id ? 'sent' : 'received'}">
-                    <div class="message-sender">${msg.from_user === currentUser.id ? 'Anda' : currentChatUser}</div>
-                    <div class="message-text">${escapeHtml(msg.message)}</div>
-                    <div style="font-size:0.6rem; opacity:0.5; margin-top:2px;">${new Date(msg.created_at).toLocaleTimeString()}</div>
-                </div>
-            `).join('');
-            container.scrollTop = container.scrollHeight;
-        }
-        
-        await supabase
-            .from('messages')
-            .update({ read: true })
-            .eq('to_user', currentUser.id)
-            .eq('from_user', otherUserId);
-        
-        await loadMessages();
-    }
-    
-    window.sendChatMessage = async function() {
-        const input = document.getElementById('messageInput');
-        const text = input.value.trim();
-        if(!text) return;
-        
-        await sendMessage(currentChatUser, text);
-        input.value = '';
-        await loadChatMessages();
-    };
     
     // ==================== PROFILE ====================
     function showProfile() {
+        const myVideosCount = allVideos.filter(v => v.user_id === currentUser.id).length;
+        const totalLikes = allVideos.filter(v => v.user_id === currentUser.id).reduce((sum, v) => sum + (v.likes || 0), 0);
+        
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.id = 'profileModal';
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-header"><h3>👤 Profil</h3><button class="close-modal" onclick="closeModal('profileModal')">✕</button></div>
+                <div class="modal-header"><h3>👤 Profil Saya</h3><button class="close-modal" onclick="closeModal('profileModal')">✕</button></div>
                 <div style="text-align:center;">
                     <div style="font-size:64px; margin-bottom:12px;">👤</div>
-                    <p><strong>${escapeHtml(currentUser?.email?.split('@')[0] || 'Pengguna')}</strong></p>
+                    <p><strong>@${escapeHtml(currentUser?.email?.split('@')[0] || 'Pengguna')}</strong></p>
                     <p style="color:#777; font-size:0.8rem;">ID: ${currentUser?.id?.substring(0, 8)}...</p>
-                    <button class="btn-secondary" onclick="closeModal('profileModal')" style="margin-top:16px;">Tutup</button>
+                    <div style="display:flex; justify-content:space-around; margin:20px 0; padding:16px; background:#0a0a0a; border-radius:16px;">
+                        <div><div style="font-size:24px; font-weight:bold;">${myVideosCount}</div><div style="color:#777;">Video</div></div>
+                        <div><div style="font-size:24px; font-weight:bold;">${formatLikes(totalLikes)}</div><div style="color:#777;">Jumlah Like</div></div>
+                    </div>
+                    <button class="btn-secondary" onclick="closeModal('profileModal')" style="background:#333; padding:12px 24px;">Tutup</button>
                 </div>
             </div>
         `;
@@ -1156,10 +1025,17 @@
             });
         });
         
-        document.querySelectorAll('.interact-btn[data-action="comment"], .interact-btn[data-action="profile"], .username').forEach(el => {
+        document.querySelectorAll('.interact-btn[data-action="comment"]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showToast('💬 Ruangan komen akan datang!');
+            });
+        });
+        
+        document.querySelectorAll('.interact-btn[data-action="profile"], .username').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
-                showToast('✨ Feature akan datang!');
+                showToast('✨ Ikuti kreator untuk lebih video menarik!');
             });
         });
         
@@ -1187,6 +1063,13 @@
             });
         });
         
+        document.querySelectorAll('.account-item').forEach(acc => {
+            acc.addEventListener('click', () => {
+                const username = acc.getAttribute('data-username');
+                showToast(`👤 Profil ${username}`);
+            });
+        });
+        
         document.getElementById('searchBtn')?.addEventListener('click', () => showToast('🔍 Fungsi carian akan tiba'));
         
         document.querySelectorAll('[data-mnav]').forEach(nav => {
@@ -1197,9 +1080,21 @@
                 const action = nav.getAttribute('data-mnav');
                 if(action === 'create') showUploadModal();
                 else if(action === 'profile') showProfile();
-                else if(action === 'inbox') showInbox();
                 else if(action === 'trending') loadVideos('trending');
                 else loadVideos('foryou');
+            });
+        });
+    }
+    
+    function attachMyVideosListeners() {
+        attachEventListeners();
+        
+        document.querySelectorAll('.interact-btn[data-action="delete"]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const videoId = btn.getAttribute('data-id');
+                const videoUrl = btn.getAttribute('data-url');
+                await deleteVideo(videoId, videoUrl);
             });
         });
     }
