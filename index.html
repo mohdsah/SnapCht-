@@ -613,6 +613,20 @@
             color: #fe2c55;
             margin-bottom: 4px;
         }
+
+        .upload-progress {
+            margin-top: 10px;
+            background: #333;
+            border-radius: 10px;
+            height: 4px;
+            overflow: hidden;
+        }
+        .upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #fe2c55;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -690,7 +704,7 @@
 </nav>
 
 <script>
-    // ==================== SUPABASE CONFIG (GUNA NAMA BERBEZA UNTUK ELakkan KONFLIK) ====================
+    // ==================== SUPABASE CONFIG ====================
     const SB_URL = 'https://xliywedqcpavytvmlqib.supabase.co';
     const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsaXl3ZWRxY3Bhdnl0dm1scWliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NTE0OTUsImV4cCI6MjA5NjQyNzQ5NX0.YJ4doL1vTXcVWX5M0n3tpS5gbO5HB4S0d5V_1i4_LsM';
     
@@ -725,14 +739,15 @@
     if(savedTheme === 'light') document.body.classList.add('light-mode');
     
     // ==================== HELPER FUNCTIONS ====================
-    function showToast(msg) {
+    function showToast(msg, isError = false) {
         let existing = document.querySelector('.toast-message');
         if(existing) existing.remove();
         let toast = document.createElement('div');
         toast.className = 'toast-message';
         toast.innerText = msg;
+        if(isError) toast.style.background = '#dc2626';
         document.body.appendChild(toast);
-        setTimeout(() => { if(toast.parentNode) toast.remove(); }, 2000);
+        setTimeout(() => { if(toast.parentNode) toast.remove(); }, 3000);
     }
     
     function formatNumber(num) {
@@ -779,6 +794,7 @@
             
             if(session) {
                 currentUser = session.user;
+                console.log('User logged in:', currentUser.email);
                 await Promise.all([
                     loadFollowing(),
                     loadSavedVideos(),
@@ -798,6 +814,7 @@
                     return;
                 }
                 currentUser = data.user;
+                console.log('New user created:', currentUser.email);
                 await Promise.all([
                     loadFollowing(),
                     loadSavedVideos(),
@@ -900,7 +917,7 @@
             reason: reason
         });
         
-        if(error) showToast('❌ Gagal melapor');
+        if(error) showToast('❌ Gagal melapor', true);
         else showToast('✅ Laporan dihantar. Terima kasih!');
         closeModal('reportModal');
     }
@@ -1141,7 +1158,7 @@
             .eq('user_id', currentUser.id);
         
         if(error) {
-            showToast('Gagal memadam video');
+            showToast('Gagal memadam video', true);
         } else {
             showToast('🗑️ Video berjaya dipadam');
             await loadMyVideos();
@@ -1330,57 +1347,126 @@
         }
     }
     
-    // ==================== UPLOAD VIDEO ====================
+    // ==================== UPLOAD VIDEO (DIBAIKI) ====================
     function showUploadModal() {
+        // Close existing modal
+        closeModal('uploadModal');
+        
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.id = 'uploadModal';
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header"><h3>🎥 Muat Naik Video</h3><button class="close-modal" onclick="closeModal('uploadModal')">✕</button></div>
-                <input type="file" id="videoFileInput" accept="video/mp4" class="modal-input">
+                <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm" class="modal-input">
                 <input type="text" id="videoCaption" placeholder="Kapsyen (contoh: #fyp #viral)" class="modal-input">
+                <div id="uploadProgressContainer" style="display:none;">
+                    <div class="upload-progress">
+                        <div class="upload-progress-bar" id="uploadProgressBar"></div>
+                    </div>
+                    <p id="uploadStatus" style="font-size:0.8rem; margin-top:8px; text-align:center;">Mengunggah...</p>
+                </div>
                 <button class="btn-primary" id="uploadBtn">Upload</button>
             </div>
         `;
         document.body.appendChild(modal);
         
-        document.getElementById('uploadBtn').onclick = async () => {
-            const file = document.getElementById('videoFileInput').files[0];
-            const caption = document.getElementById('videoCaption').value || "Tiada kapsyen";
-            if(!file) { showToast('📁 Pilih video dahulu'); return; }
-            if(file.size > 20 * 1024 * 1024) { showToast('❌ Saiz video maksimum 20MB'); return; }
+        const fileInput = document.getElementById('videoFileInput');
+        const captionInput = document.getElementById('videoCaption');
+        const uploadBtn = document.getElementById('uploadBtn');
+        
+        uploadBtn.onclick = async () => {
+            const file = fileInput.files[0];
+            const caption = captionInput.value || "Tiada kapsyen";
             
-            const btn = document.getElementById('uploadBtn');
-            btn.disabled = true;
-            btn.innerText = 'Mengunggah...';
-            showToast('📤 Sedang upload...');
+            // Validation
+            if(!file) {
+                showToast('📁 Sila pilih video terlebih dahulu', true);
+                return;
+            }
+            
+            // Check file size (max 50MB)
+            if(file.size > 50 * 1024 * 1024) {
+                showToast('❌ Saiz video terlalu besar! Maksimum 50MB', true);
+                return;
+            }
+            
+            // Check file type
+            if(!file.type.startsWith('video/')) {
+                showToast('❌ Sila pilih fail video yang sah', true);
+                return;
+            }
+            
+            // Disable button and show progress
+            uploadBtn.disabled = true;
+            uploadBtn.innerText = 'Mengunggah...';
+            document.getElementById('uploadProgressContainer').style.display = 'block';
+            
+            // Generate unique filename
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
             
             try {
-                const fileName = `${Date.now()}_video.mp4`;
-                const { error: uploadError } = await sb.storage.from('videos').upload(fileName, file);
-                if(uploadError) throw uploadError;
+                showToast('📤 Sedang memuat naik ke server...');
                 
-                const { data: { publicUrl } } = sb.storage.from('videos').getPublicUrl(fileName);
+                // Upload to Supabase Storage
+                const { data: uploadData, error: uploadError } = await sb.storage
+                    .from('videos')
+                    .upload(fileName, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
                 
+                if(uploadError) {
+                    console.error('Upload error:', uploadError);
+                    throw new Error(uploadError.message);
+                }
+                
+                // Get public URL
+                const { data: { publicUrl } } = sb.storage
+                    .from('videos')
+                    .getPublicUrl(fileName);
+                
+                showToast('💾 Menyimpan ke database...');
+                
+                // Insert into database
                 const username = currentUser.email?.split('@')[0] || 'pengguna';
-                await sb.from('videos').insert({
-                    description: caption,
-                    video_url: publicUrl,
-                    likes: 0,
-                    views: 0,
-                    user_id: currentUser.id,
-                    username: username
-                });
+                const { error: insertError } = await sb
+                    .from('videos')
+                    .insert({
+                        description: caption.substring(0, 500),
+                        video_url: publicUrl,
+                        likes: 0,
+                        views: 0,
+                        user_id: currentUser.id,
+                        username: username,
+                        created_at: new Date().toISOString()
+                    });
                 
+                if(insertError) {
+                    console.error('Insert error:', insertError);
+                    throw new Error(insertError.message);
+                }
+                
+                // Success
+                document.getElementById('uploadProgressBar').style.width = '100%';
                 showToast('✅ Video berjaya diterbitkan!');
-                closeModal('uploadModal');
-                loadVideos('foryou');
+                
+                // Close modal and refresh feed
+                setTimeout(() => {
+                    closeModal('uploadModal');
+                    loadVideos('foryou');
+                }, 1000);
+                
             } catch(err) {
-                console.error(err);
-                showToast('❌ Gagal upload. Cuba lagi.');
-                btn.disabled = false;
-                btn.innerText = 'Upload';
+                console.error('Upload failed:', err);
+                showToast('❌ Gagal upload: ' + (err.message || 'Sila cuba lagi'), true);
+                
+                // Reset button
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = 'Upload';
+                document.getElementById('uploadProgressContainer').style.display = 'none';
+                document.getElementById('uploadProgressBar').style.width = '0%';
             }
         };
     }
