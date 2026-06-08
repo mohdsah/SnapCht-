@@ -23,7 +23,6 @@
             transition: background-color 0.3s, color 0.3s;
         }
 
-        /* Light Mode */
         body.light-mode {
             background-color: #f5f5f5;
             color: #1a1a1a;
@@ -588,6 +587,9 @@
             animation: fadeInUp 0.2s ease;
             pointer-events: none;
         }
+        .toast-message.error {
+            background: #dc2626;
+        }
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateX(-50%) translateY(10px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -719,10 +721,11 @@
     let savedVideosSet = new Set();
     let followingSet = new Set();
     let videoViewTracked = new Set();
+    let activeChatSubscription = null; // Menyimpan fungsi Realtime chat channel
     
     const feedContainer = document.getElementById('videoFeed');
     let searchTimeout = null;
-    let pullStartY = 0;
+    let touchStart = 0;
     
     // ==================== THEME TOGGLE ====================
     function toggleTheme() {
@@ -743,9 +746,8 @@
         let existing = document.querySelector('.toast-message');
         if(existing) existing.remove();
         let toast = document.createElement('div');
-        toast.className = 'toast-message';
+        toast.className = 'toast-message' + (isError ? ' error' : '');
         toast.innerText = msg;
-        if(isError) toast.style.background = '#dc2626';
         document.body.appendChild(toast);
         setTimeout(() => { if(toast.parentNode) toast.remove(); }, 3000);
     }
@@ -795,13 +797,6 @@
             if(session) {
                 currentUser = session.user;
                 console.log('User logged in:', currentUser.email);
-                await Promise.all([
-                    loadFollowing(),
-                    loadSavedVideos(),
-                    loadSuggestedAccounts(),
-                    loadVideos('foryou')
-                ]);
-                hideLoading();
             } else {
                 const { data, error } = await sb.auth.signUp({
                     email: `user_${Date.now()}@snapcht.com`,
@@ -815,14 +810,16 @@
                 }
                 currentUser = data.user;
                 console.log('New user created:', currentUser.email);
-                await Promise.all([
-                    loadFollowing(),
-                    loadSavedVideos(),
-                    loadSuggestedAccounts(),
-                    loadVideos('foryou')
-                ]);
-                hideLoading();
             }
+
+            await Promise.all([
+                loadFollowing(),
+                loadLikedVideos(),
+                loadSavedVideos(),
+                loadSuggestedAccounts(),
+                loadVideos('foryou')
+            ]);
+            hideLoading();
             initEventListeners();
             initPullToRefresh();
         } catch(err) {
@@ -833,7 +830,6 @@
     
     // ==================== PULL TO REFRESH ====================
     function initPullToRefresh() {
-        let touchStart = 0;
         feedContainer.addEventListener('touchstart', (e) => {
             if(feedContainer.scrollTop === 0) {
                 touchStart = e.touches[0].clientY;
@@ -859,7 +855,7 @@
         });
     }
     
-    // ==================== VIEW COUNTER ====================
+    // ==================== VIEW COUNTER (KAUNTER TONTONAN) ====================
     function trackVideoView(videoId, videoElement) {
         let playTimeout = null;
         
@@ -867,12 +863,14 @@
             playTimeout = setTimeout(async () => {
                 if(videoElement.currentTime >= 3 && !videoViewTracked.has(videoId)) {
                     videoViewTracked.add(videoId);
+                    
+                    // Kemas kini secara increment yang selamat di database
                     const { data: video } = await sb.from('videos').select('views').eq('id', videoId).single();
                     const newViews = (video?.views || 0) + 1;
                     await sb.from('videos').update({ views: newViews }).eq('id', videoId);
                     
                     const viewSpan = videoElement.closest('.video-wrapper')?.querySelector('.view-count');
-                    if(viewSpan) viewSpan.innerText = formatNumber(newViews);
+                    if(viewSpan) viewSpan.innerText = '👁️ ' + formatNumber(newViews);
                 }
             }, 3000);
         };
@@ -968,7 +966,6 @@
         }
         
         const { data, error } = await query;
-        
         if(error) {
             console.error('Load videos error:', error);
             return;
@@ -976,6 +973,12 @@
         
         allVideos = data || [];
         renderFeed();
+    }
+
+    async function loadLikedVideos() {
+        if(!currentUser) return;
+        const { data } = await sb.from('liked_videos').select('video_id').eq('user_id', currentUser.id);
+        if(data) data.forEach(item => likedVideosSet.add(item.video_id));
     }
     
     async function loadSavedVideos() {
@@ -1011,6 +1014,37 @@
         const { data } = await sb.from('videos').select('*').eq('user_id', currentUser.id);
         allVideos = data || [];
         renderFeed();
+    }
+
+    // ==================== TOGGLE LIKE SYSTEM (DUA HALA) ====================
+    async function toggleLikeVideo(videoId, btnElement, currentLikes) {
+        const isLiked = likedVideosSet.has(videoId);
+        let newLikesCount = currentLikes;
+
+        const countSpan = btnElement.querySelector('.like-count');
+        const iconCircle = btnElement.querySelector('.circle-icon');
+
+        if(isLiked) {
+            // Proses Unlike
+            await sb.from('liked_videos').delete().eq('user_id', currentUser.id).eq('video_id', videoId);
+            likedVideosSet.delete(videoId);
+            newLikesCount = Math.max(0, currentLikes - 1);
+            if(iconCircle) iconCircle.classList.remove('liked');
+            showToast('💔 Batal Suka');
+        } else {
+            // Proses Like
+            await sb.from('liked_videos').insert({ user_id: currentUser.id, video_id: videoId });
+            likedVideosSet.add(videoId);
+            newLikesCount = currentLikes + 1;
+            if(iconCircle) iconCircle.classList.add('liked');
+            showToast('❤️ Menyukai video ini');
+        }
+
+        btnElement.setAttribute('data-likes', newLikesCount);
+        if(countSpan) countSpan.innerText = formatNumber(newLikesCount);
+
+        // Kemaskini rekod kiraan ke database table 'videos'
+        await sb.from('videos').update({ likes: newLikesCount }).eq('id', videoId);
     }
     
     async function toggleSaveVideo(videoId, btnElement) {
@@ -1093,7 +1127,7 @@
                             <p class="description">${escapeHtml(video.description || 'Tiada kapsyen')}</p>
                             ${extractHashtags(video.description)}
                             <div class="video-stats">
-                                <span>❤️ ${formatNumber(video.likes)}</span>
+                                <span>❤️ <span class="stat-like-count">${formatNumber(video.likes)}</span></span>
                                 <span class="view-count">👁️ ${formatNumber(video.views || 0)}</span>
                             </div>
                             <div class="music-track">🎵 ${escapeHtml(video.username)}</div>
@@ -1127,8 +1161,6 @@
                 video.currentTime = 0;
             };
         });
-        
-        if(currentObserver) currentObserver.disconnect();
         
         currentObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -1204,7 +1236,7 @@
         };
     }
     
-    // ==================== CHAT ====================
+    // ==================== REALTIME CHAT SYSTEM (SEMBAH REAL-TIME) ====================
     async function openChatModal() {
         const { data: users } = await sb.from('videos').select('username, user_id').neq('user_id', currentUser.id).limit(10);
         
@@ -1213,14 +1245,14 @@
         modal.id = 'chatModal';
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-header"><h3>💬 Chat</h3><button class="close-modal" onclick="closeModal('chatModal')">✕</button></div>
+                <div class="modal-header"><h3>💬 Chat</h3><button class="close-modal" onclick="closeModal('chatModal'); removeChatSubscription();">✕</button></div>
                 <div id="chatUserList">
-                    ${users?.map(u => `
+                    ${users?.length ? [...new Map(users.map(u => [u.user_id, u])).values()].map(u => `
                         <div class="account-item" data-chat-user="${u.user_id}" data-username="${escapeHtml(u.username)}">
                             <div class="avatar-box">👤</div>
                             <div class="account-name">@${escapeHtml(u.username)}</div>
                         </div>
-                    `).join('') || '<div class="empty-state">Tiada pengguna lain</div>'}
+                    `).join('') : '<div class="empty-state">Tiada pengguna lain</div>'}
                 </div>
                 <div id="chatConversation" style="display:none;"></div>
             </div>
@@ -1251,6 +1283,7 @@
         `;
         
         await loadChatMessages(userId);
+        setupRealtimeChat(userId); // Aktifkan pendengar mesej Real-time
         
         document.getElementById('sendChatBtn').onclick = async () => {
             const text = document.getElementById('chatInput').value;
@@ -1263,11 +1296,11 @@
             });
             document.getElementById('chatInput').value = '';
             await loadChatMessages(userId);
-            showToast('💌 Mesej dihantar');
         };
     }
     
     window.backToChatList = function() {
+        removeChatSubscription();
         document.getElementById('chatConversation').style.display = 'none';
         document.getElementById('chatUserList').style.display = 'block';
     };
@@ -1290,6 +1323,32 @@
                 </div>
             `).join('') || '<div class="empty-state">Tiada mesej. Mulakan perbualan!</div>';
             container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    function setupRealtimeChat(userId) {
+        removeChatSubscription();
+
+        activeChatSubscription = sb.channel('custom-filter-channel')
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'messages' },
+            (payload) => {
+                const msg = payload.new;
+                // Pastikan mesej yang masuk adalah milik perbualan aktif ini
+                if ((msg.from_user === userId && msg.to_user === currentUser.id) || 
+                    (msg.from_user === currentUser.id && msg.to_user === userId)) {
+                    loadChatMessages(userId);
+                }
+            }
+        )
+        .subscribe();
+    }
+
+    function removeChatSubscription() {
+        if(activeChatSubscription) {
+            sb.removeChannel(activeChatSubscription);
+            activeChatSubscription = null;
         }
     }
     
@@ -1324,11 +1383,11 @@
     // ==================== SUGGESTED ACCOUNTS ====================
     async function loadSuggestedAccounts() {
         if(!currentUser) return;
-        const { data } = await sb.from('videos').select('username, user_id').neq('user_id', currentUser.id).limit(5);
+        const { data } = await sb.from('videos').select('username, user_id').neq('user_id', currentUser.id).limit(10);
         
         const container = document.getElementById('suggestedAccounts');
         if(container && data) {
-            const unique = [...new Map(data.map(u => [u.user_id, u])).values()];
+            const unique = [...new Map(data.map(u => [u.user_id, u])).values()].slice(0, 5);
             container.innerHTML = unique.map(user => `
                 <div class="account-item" data-user-id="${user.user_id}">
                     <div class="avatar-box">👤</div>
@@ -1347,9 +1406,8 @@
         }
     }
     
-    // ==================== UPLOAD VIDEO (DIBAIKI) ====================
+    // ==================== UPLOAD VIDEO MODAL ====================
     function showUploadModal() {
-        // Close existing modal
         closeModal('uploadModal');
         
         const modal = document.createElement('div');
@@ -1357,116 +1415,81 @@
         modal.id = 'uploadModal';
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-header"><h3>🎥 Muat Naik Video</h3><button class="close-modal" onclick="closeModal('uploadModal')">✕</button></div>
-                <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/webm" class="modal-input">
+                <div class="modal-header">
+                    <h3>🎥 Muat Naik Video</h3>
+                    <button class="close-modal" onclick="closeModal('uploadModal')">✕</button>
+                </div>
+                <p style="color:#ff9a3c; font-size:0.8rem; margin-bottom:12px;">⚠️ Sila gunakan pautan URL video luaran (Direct MP4 CDN) untuk tujuan paparan optimum.</p>
+                <input type="text" id="videoUrlInput" placeholder="Masukkan URL video .mp4" class="modal-input" value="https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-sign-light-looking-at-phone-42023-large.mp4">
                 <input type="text" id="videoCaption" placeholder="Kapsyen (contoh: #fyp #viral)" class="modal-input">
                 <div id="uploadProgressContainer" style="display:none;">
                     <div class="upload-progress">
                         <div class="upload-progress-bar" id="uploadProgressBar"></div>
                     </div>
-                    <p id="uploadStatus" style="font-size:0.8rem; margin-top:8px; text-align:center;">Mengunggah...</p>
+                    <p id="uploadStatus" style="font-size:0.8rem; margin-top:8px; text-align:center;">Memproses...</p>
                 </div>
-                <button class="btn-primary" id="uploadBtn">Upload</button>
+                <button class="btn-primary" id="uploadBtn">Terbitkan Video</button>
+                <p id="uploadErrorMsg" style="color:#dc2626; font-size:0.75rem; margin-top:8px; display:none;"></p>
             </div>
         `;
         document.body.appendChild(modal);
         
-        const fileInput = document.getElementById('videoFileInput');
+        const urlInput = document.getElementById('videoUrlInput');
         const captionInput = document.getElementById('videoCaption');
         const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('uploadProgressContainer');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const errorMsg = document.getElementById('uploadErrorMsg');
         
         uploadBtn.onclick = async () => {
-            const file = fileInput.files[0];
+            const videoUrl = urlInput.value.trim();
             const caption = captionInput.value || "Tiada kapsyen";
             
-            // Validation
-            if(!file) {
-                showToast('📁 Sila pilih video terlebih dahulu', true);
+            if(!videoUrl) {
+                errorMsg.innerText = '📁 Sila masukkan URL video';
+                errorMsg.style.display = 'block';
                 return;
             }
             
-            // Check file size (max 50MB)
-            if(file.size > 50 * 1024 * 1024) {
-                showToast('❌ Saiz video terlalu besar! Maksimum 50MB', true);
-                return;
-            }
-            
-            // Check file type
-            if(!file.type.startsWith('video/')) {
-                showToast('❌ Sila pilih fail video yang sah', true);
-                return;
-            }
-            
-            // Disable button and show progress
             uploadBtn.disabled = true;
-            uploadBtn.innerText = 'Mengunggah...';
-            document.getElementById('uploadProgressContainer').style.display = 'block';
-            
-            // Generate unique filename
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+            uploadBtn.innerText = 'Diterbitkan...';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '50%';
+            uploadStatus.innerText = 'Menyimpan ke database...';
             
             try {
-                showToast('📤 Sedang memuat naik ke server...');
-                
-                // Upload to Supabase Storage
-                const { data: uploadData, error: uploadError } = await sb.storage
-                    .from('videos')
-                    .upload(fileName, file, {
-                        cacheControl: '3600',
-                        upsert: false
-                    });
-                
-                if(uploadError) {
-                    console.error('Upload error:', uploadError);
-                    throw new Error(uploadError.message);
-                }
-                
-                // Get public URL
-                const { data: { publicUrl } } = sb.storage
-                    .from('videos')
-                    .getPublicUrl(fileName);
-                
-                showToast('💾 Menyimpan ke database...');
-                
-                // Insert into database
                 const username = currentUser.email?.split('@')[0] || 'pengguna';
                 const { error: insertError } = await sb
                     .from('videos')
                     .insert({
                         description: caption.substring(0, 500),
-                        video_url: publicUrl,
+                        title: caption.substring(0, 100),
+                        video_url: videoUrl,
                         likes: 0,
                         views: 0,
                         user_id: currentUser.id,
-                        username: username,
-                        created_at: new Date().toISOString()
+                        username: username
                     });
                 
-                if(insertError) {
-                    console.error('Insert error:', insertError);
-                    throw new Error(insertError.message);
-                }
+                if(insertError) throw insertError;
                 
-                // Success
-                document.getElementById('uploadProgressBar').style.width = '100%';
+                progressBar.style.width = '100%';
+                uploadStatus.innerText = 'Selesai!';
                 showToast('✅ Video berjaya diterbitkan!');
                 
-                // Close modal and refresh feed
                 setTimeout(() => {
                     closeModal('uploadModal');
                     loadVideos('foryou');
                 }, 1000);
                 
             } catch(err) {
-                console.error('Upload failed:', err);
-                showToast('❌ Gagal upload: ' + (err.message || 'Sila cuba lagi'), true);
-                
-                // Reset button
+                console.error('Save error:', err);
+                errorMsg.innerText = '❌ Gagal menyimpan. Cuba lagi.';
+                errorMsg.style.display = 'block';
                 uploadBtn.disabled = false;
-                uploadBtn.innerText = 'Upload';
-                document.getElementById('uploadProgressContainer').style.display = 'none';
-                document.getElementById('uploadProgressBar').style.width = '0%';
+                uploadBtn.innerText = 'Terbitkan Video';
+                progressContainer.style.display = 'none';
             }
         };
     }
@@ -1474,7 +1497,6 @@
     // ==================== EVENT LISTENERS ====================
     function initEventListeners() {
         feedContainer.addEventListener('click', async (e) => {
-            // Play/Pause video
             if (e.target.classList.contains('main-video-player')) {
                 e.stopPropagation();
                 if (e.target.paused) {
@@ -1485,7 +1507,6 @@
                 return;
             }
             
-            // Follow button
             const followBtn = e.target.closest('.follow-btn-small');
             if(followBtn) {
                 e.stopPropagation();
@@ -1494,31 +1515,15 @@
                 return;
             }
             
-            // Like button
             const likeBtn = e.target.closest('.like-btn');
             if(likeBtn) {
                 e.stopPropagation();
                 const vId = likeBtn.getAttribute('data-id');
                 const cLikes = parseInt(likeBtn.getAttribute('data-likes')) || 0;
-                
-                if(likedVideosSet.has(vId)) {
-                    showToast('Anda sudah menyukai video ini');
-                    return;
-                }
-                
-                likedVideosSet.add(vId);
-                const countSpan = likeBtn.querySelector('.like-count');
-                const iconCircle = likeBtn.querySelector('.circle-icon');
-                
-                if(countSpan) countSpan.innerText = formatNumber(cLikes + 1);
-                if(iconCircle) iconCircle.classList.add('liked');
-                
-                await sb.from('videos').update({ likes: cLikes + 1 }).eq('id', vId);
-                showToast('❤️ Disukai!');
+                await toggleLikeVideo(vId, likeBtn, cLikes);
                 return;
             }
             
-            // Save button
             const saveBtn = e.target.closest('.save-btn');
             if(saveBtn) {
                 e.stopPropagation();
@@ -1526,7 +1531,6 @@
                 return;
             }
             
-            // Comment button
             const commentBtn = e.target.closest('[data-action="comment"]');
             if(commentBtn) {
                 e.stopPropagation();
@@ -1534,7 +1538,6 @@
                 return;
             }
             
-            // Share button
             const shareBtn = e.target.closest('[data-action="share"]');
             if(shareBtn) {
                 e.stopPropagation();
@@ -1542,7 +1545,6 @@
                 return;
             }
             
-            // Report button
             const reportBtn = e.target.closest('[data-action="report"]');
             if(reportBtn) {
                 e.stopPropagation();
@@ -1550,7 +1552,6 @@
                 return;
             }
             
-            // Delete button
             const deleteBtn = e.target.closest('[data-action="delete"]');
             if(deleteBtn) {
                 e.stopPropagation();
@@ -1560,14 +1561,12 @@
                 return;
             }
             
-            // Profile
             if(e.target.closest('[data-action="profile"]') || e.target.closest('.username')) {
                 e.stopPropagation();
                 showToast('✨ Profil kreator');
             }
         });
         
-        // Double click like
         feedContainer.addEventListener('dblclick', (e) => {
             if(e.target.classList.contains('main-video-player')) {
                 const likeBtn = e.target.closest('.video-wrapper')?.querySelector('.like-btn');
@@ -1575,16 +1574,13 @@
             }
         });
         
-        // Theme buttons
         document.getElementById('themeBtn')?.addEventListener('click', toggleTheme);
         document.getElementById('sidebarThemeToggle')?.addEventListener('click', toggleTheme);
         
-        // Top tabs
         document.querySelectorAll('.top-tab').forEach(tab => {
             tab.addEventListener('click', () => loadVideos(tab.getAttribute('data-tab')));
         });
         
-        // Sidebar menu
         document.querySelectorAll('.menu-item').forEach(item => {
             item.addEventListener('click', () => {
                 const nav = item.getAttribute('data-nav');
@@ -1596,7 +1592,6 @@
             });
         });
         
-        // Mobile navigation
         document.querySelectorAll('[data-mnav]').forEach(nav => {
             nav.addEventListener('click', () => {
                 const action = nav.getAttribute('data-mnav');
@@ -1608,10 +1603,8 @@
             });
         });
         
-        // Brand logo
         document.querySelector('.brand-logo')?.addEventListener('click', () => loadVideos('foryou'));
         
-        // Search
         const searchInput = document.getElementById('globalSearchInput');
         if(searchInput) {
             searchInput.addEventListener('input', (e) => {
@@ -1620,7 +1613,6 @@
             });
         }
         
-        // Notifications
         document.getElementById('notifBtn')?.addEventListener('click', () => showToast('🔔 Tiada notifikasi baru'));
     }
     
