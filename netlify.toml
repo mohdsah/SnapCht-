@@ -1,0 +1,29 @@
+[build]
+  publish = "."
+
+# SPA redirect
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+
+# Security + performance headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options            = "SAMEORIGIN"
+    X-Content-Type-Options     = "nosniff"
+    X-XSS-Protection           = "1; mode=block"
+    Referrer-Policy            = "strict-origin-when-cross-origin"
+    Permissions-Policy         = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/*.sql"
+  [headers.values]
+    Cache-Control = "no-store"
+    X-Robots-Tag  = "noindex"
