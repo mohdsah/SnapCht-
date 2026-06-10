@@ -1,48 +1,48 @@
-# SnapCht - Platform Video Pendek
+═══════════════════════════════════
+SNAPCHT V3.1 — Setup Guide
+═══════════════════════════════════
 
-Platform video pendek ala TikTok yang dibina dengan HTML, CSS, JavaScript dan Supabase.
+STEP 1 — Setup Database (Supabase)
+1. Open supabase.com → your project
+2. Go to SQL Editor
+3. Run ALL content in database.sql
+4. Done!
 
-## ✨ Ciri-ciri
+STEP 2 — Enable Auth
+1. Supabase → Authentication → Settings
+2. Enable "Anonymous sign-ins" (ON)
 
-- 📱 Feed video menegak (scroll snap)
-- ❤️ Like & Unlike video
-- 📌 Simpan video kegemaran
-- 👥 Sistem ikut-mengikut (follow)
-- 💬 Sistem komen
-- 💬 Chat real-time antara pengguna
-- 🔍 Carian video & hashtag
-- 🔥 Trending videos (mengikut tontonan)
-- 👁️ Kaunter tontonan video
-- 🌙 Dark/Light mode
-- 🔄 Pull to refresh
-- 🚩 Lapor video tidak sesuai
-- 🔗 Kongsi pautan video
+STEP 3 — Deploy to Netlify
+1. Open netlify.com/drop
+2. Drag THIS FOLDER to the browser
+3. Get your live URL!
 
-## 🚀 Deployment ke Netlify
+═══════════════════════════════════
+NEW FEATURES in V3.1
+═══════════════════════════════════
 
-1. Push kod ke GitHub repository
-2. Log masuk ke [Netlify](https://app.netlify.com)
-3. Klik "Add new site" → "Import an existing project"
-4. Pilih GitHub dan repo SnapCht
-5. Build settings: 
-   - Base directory: (biarkan kosong)
-   - Build command: (biarkan kosong)
-   - Publish directory: `.`
-6. Klik "Deploy site"
+✓ Double-tap to like (with heart animation)
+✓ Video progress bar
+✓ Mute/unmute button
+✓ Real notification bell (with red dot)
+✓ Profile page with stats (videos, likes, followers)
+✓ Profile tabs: Videos / Liked / Saved
+✓ Comment count on video
+✓ Web Share API (native share sheet)
+✓ WhatsApp + Telegram share
+✓ Row Level Security (RLS) on all tables
+✓ Auto comment count trigger
+✓ Notification when someone likes/comments/follows
+✓ Better search (panel + screen)
+✓ Trending hashtag chips
+✓ Pull to refresh
+✓ Loading spinners
+✓ Empty state messages
 
-## 🗄️ Persediaan Supabase
-
-1. Buka [Supabase Dashboard](https://app.supabase.com)
-2. Buat project baru
-3. Jalankan SQL di bawah dalam SQL Editor:
-
-\`\`\`sql
--- Salin semua SQL dari fail database.sql
-\`\`\`
-
-4. Dapatkan URL Project dan Anon Key
-5. Gantikan di `index.html`:
-
-```javascript
-const SB_URL = 'https://your-project.supabase.co';
-const SB_ANON_KEY = 'your-anon-key';
+═══════════════════════════════════
+UNTUK CODE ON THE GO
+═══════════════════════════════════
+Edit index.html sahaja.
+Semua code dalam 1 fail.
+Tiada build step diperlukan.
+═══════════════════════════════════
