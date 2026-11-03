@@ -3,72 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>SnapCht · Video Pendek</title>
+    <title>SnapCht · Kongsi Detik Anda</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
-<div class="loading-screen" id="loadingScreen">
-    <div class="loading-spinner"></div>
-    <p>Memuatkan SnapCht...</p>
-</div>
-
-<div class="pull-to-refresh" id="pullToRefresh"><span>↓ Tarik ke bawah untuk refresh</span></div>
+<div class="loading-screen" id="loadingScreen"><div class="loading-spinner"></div><p>Memuatkan SnapCht...</p></div>
+<div class="pull-to-refresh" id="pullToRefresh"><span>↓ Lepas untuk refresh</span></div>
 
 <header class="app-header">
-    <div class="header-left"><a href="#" class="brand-logo">Snap<span>Cht</span></a></div>
-    <div class="header-center">
-        <div class="top-tabs">
-            <div class="top-tab active" data-tab="foryou">For You</div>
-            <div class="top-tab" data-tab="trending">Trending</div>
-        </div>
+    <div class="header-right" id="menuBtn">☰</div>
+    <a href="#" class="brand-logo">Snap<span>Cht</span></a>
+    <div class="header-spacer"></div>
+    <div class="top-tabs">
+        <div class="top-tab active" data-tab="foryou">Untuk Anda</div>
+        <div class="top-tab" data-tab="trending">Hangat</div>
+        <div class="top-tab" data-tab="following">Ikutan</div>
     </div>
-    <div class="search-container">
-        <span>🔍</span>
-        <input type="text" id="globalSearchInput" placeholder="Cari video atau #hashtag...">
-    </div>
+    <div class="header-spacer"></div>
+    <div class="search-container"><span>🔍</span><input type="text" id="globalSearchInput" placeholder="Cari video atau #tag"></div>
     <div class="header-right" id="themeBtn">🌙</div>
-    <div class="header-right" id="notifBtn">🔔</div>
+    <div class="header-right" id="accountBtn">🔑</div>
 </header>
 
-<div class="main-wrapper">
-    <aside class="sidebar-left">
-        <div class="menu-section">
-            <div class="menu-item active" data-nav="home"><span class="menu-icon">🏠</span> For You</div>
-            <div class="menu-item" data-nav="trending"><span class="menu-icon">🔥</span> Trending</div>
-            <div class="menu-item" data-nav="myvideos"><span class="menu-icon">📹</span> My Videos</div>
-            <div class="menu-item" data-nav="saved"><span class="menu-icon">📌</span> Saved Videos</div>
-        </div>
-        <div class="menu-section">
-            <div class="menu-title">Social</div>
-            <div class="menu-item" data-nav="chat"><span class="menu-icon">💬</span> Chat</div>
-        </div>
-        <div class="menu-section">
-            <div class="menu-title">Suggested accounts</div>
-            <div id="suggestedAccounts"></div>
-        </div>
-        <div class="menu-section">
-            <div class="theme-toggle" id="sidebarThemeToggle"><span>☀️ Tukar ke Light Mode</span></div>
-        </div>
-        <div class="menu-section">
-            <div class="menu-title">SnapCht Resources</div>
-            <div class="footer-links"><a>About</a> <a>Newsroom</a> <a>Contact</a> <a>Privacy</a> <a>Terms</a></div>
-            <div style="color:#555;font-size:0.7rem;margin-top:10px;">© 2026 SnapCht</div>
-        </div>
-    </aside>
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer">
+    <div class="drawer-head" id="drawerUser"></div>
+    <div class="menu-item active" data-nav="home"><span class="menu-icon">🏠</span> Utama</div>
+    <div class="menu-item" data-nav="trending"><span class="menu-icon">🔥</span> Hangat</div>
+    <div class="menu-item" data-nav="following"><span class="menu-icon">👥</span> Ikutan</div>
+    <div class="menu-item" data-nav="myvideos"><span class="menu-icon">🎞️</span> Video Saya</div>
+    <div class="menu-item" data-nav="saved"><span class="menu-icon">🔖</span> Disimpan</div>
+    <div class="menu-item" data-nav="chat"><span class="menu-icon">💬</span> Mesej</div>
+    <div class="menu-item" data-nav="profile"><span class="menu-icon">⚙️</span> Profil &amp; Tetapan</div>
+    <div class="menu-item" id="adminMenuItem" data-nav="admin" style="display:none"><span class="menu-icon">🛡️</span> Panel Admin</div>
+    <div class="menu-item" id="drawerTheme" data-nav="theme"></div>
+    <div class="menu-item" id="drawerAuth" data-nav="auth"></div>
+</aside>
 
-    <main class="content-center">
-        <div class="feed-container" id="videoFeed"></div>
-    </main>
-</div>
+<div class="main-wrapper"><main class="content-center"><div class="feed-container" id="videoFeed"></div></main></div>
 
+<button class="fab" data-mnav="create">＋ Muat Naik</button>
 <nav class="mobile-nav-bar">
-    <div class="nav-item-box active" data-mnav="home"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></div>
-    <div class="nav-item-box" data-mnav="trending"><span class="nav-icon">🔥</span><span class="nav-label">Trending</span></div>
+    <div class="nav-item-box active" data-mnav="home"><span class="nav-icon">🏠</span><span class="nav-label">Utama</span></div>
+    <div class="nav-item-box" data-mnav="trending"><span class="nav-icon">🔥</span><span class="nav-label">Hangat</span></div>
     <div class="nav-item-box" data-mnav="create"><div class="create-btn-wrapper">+</div></div>
-    <div class="nav-item-box" data-mnav="chat"><span class="nav-icon">💬</span><span class="nav-label">Chat</span></div>
-    <div class="nav-item-box" data-mnav="profile"><span class="nav-icon">👤</span><span class="nav-label">Profile</span></div>
+    <div class="nav-item-box" data-mnav="chat"><span class="nav-icon">💬</span><span class="nav-label">Mesej</span></div>
+    <div class="nav-item-box" data-mnav="profile"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></div>
 </nav>
 
 <script src="js/config.js"></script>
