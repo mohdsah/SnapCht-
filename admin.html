@@ -4,32 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex">
-    <title>SnapCht · Panel Admin</title>
+    <title>Panel Admin · SnapCht</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
-    <link rel="stylesheet" href="css/style.css">
-    <style>
-        body { overflow: auto; height: auto; }
-        .adm-wrap { max-width: 900px; margin: 0 auto; padding: 16px; }
-        .adm-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-        .adm-bar h2 { flex: 1; }
-        .adm-bar a, .adm-bar button { width: auto; padding: 8px 16px; text-decoration: none; font-size: .85rem; }
-        .adm-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; }
-        .adm-tabs button { flex: 0 0 auto; padding: 9px 16px; border: none; border-radius: 30px; background: var(--surface); color: var(--muted); font-weight: 600; cursor: pointer; border: 1px solid var(--line); }
-        .adm-tabs button.active { background: var(--primary); color: #fff; }
-        .adm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-        .adm-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
-        .adm-stat b { font-size: 1.8rem; display: block; color: var(--primary); }
-        .adm-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 10px; font-size: .88rem; word-break: break-word; }
-        .adm-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-        .adm-actions button { padding: 8px 14px; border: none; border-radius: 10px; cursor: pointer; background: var(--bg); color: var(--ink); font-weight: 600; }
-        .adm-actions .danger { background: var(--danger); color: #fff; }
-        .adm-actions button:disabled { opacity: .5; }
-    </style>
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
 <div class="adm-wrap" id="adminRoot"><div class="empty-state">Memuatkan...</div></div>
-<script src="js/config.js"></script>
-<script src="js/utils.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>

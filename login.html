@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Log Masuk · SnapCht</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+<header class="app-header">
+    <a class="header-right" href="index.html" aria-label="Kembali">←</a>
+    <a href="index.html" class="brand-logo">Snap<span>Cht</span></a>
+    <div class="header-spacer"></div>
+    <div class="header-right" id="themeBtn">🌙</div>
+</header>
+<main class="sub-main">
+<div class="auth-card" style="margin:20px auto;">
+    <h3 style="margin-bottom:18px;">Log Masuk</h3>
+    <form id="authForm" novalidate>
+        <input class="modal-input" id="email" type="email" placeholder="Email" autocomplete="email">
+        <input class="modal-input" id="pass" type="password" placeholder="Kata laluan" autocomplete="current-password">
+        <button class="btn-primary" id="submitBtn" type="submit">Log Masuk</button></form>
+    <p class="auth-msg" id="authMsg"></p>
+    <div class="auth-links"><a href="forgot.html">Lupa kata laluan?</a><a href="register.html">Belum ada akaun? Daftar</a><a href="index.html" style="color:var(--muted)">Terus menonton tanpa akaun</a></div>
+</div>
+</main>
+<script src="js/login.js"></script>
+</body>
+</html>

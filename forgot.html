@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lupa Kata Laluan · SnapCht</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+    <link rel="stylesheet" href="css/forgot.css">
+</head>
+<body>
+<header class="app-header">
+    <a class="header-right" href="index.html" aria-label="Kembali">←</a>
+    <a href="index.html" class="brand-logo">Snap<span>Cht</span></a>
+    <div class="header-spacer"></div>
+    <div class="header-right" id="themeBtn">🌙</div>
+</header>
+<main class="sub-main">
+<div class="auth-card" style="margin:20px auto;">
+    <h3 style="margin-bottom:18px;">Lupa Kata Laluan</h3>
+    <form id="authForm" novalidate>
+        <input class="modal-input" id="email" type="email" placeholder="Email" autocomplete="email">
+        <button class="btn-primary" id="submitBtn" type="submit">Hantar Pautan Reset</button></form>
+    <form id="resetForm" style="display:none" novalidate>
+        <input class="modal-input" id="newPass" type="password" placeholder="Kata laluan baharu (min 8)" autocomplete="new-password">
+        <input class="modal-input" id="newPass2" type="password" placeholder="Sahkan kata laluan" autocomplete="new-password">
+        <button class="btn-primary" id="resetBtn" type="submit">Simpan Kata Laluan</button></form>
+    <p class="auth-msg" id="authMsg"></p>
+    <div class="auth-links"><a href="login.html">← Kembali ke Log Masuk</a></div>
+</div>
+</main>
+<script src="js/forgot.js"></script>
+</body>
+</html>
