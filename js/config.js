@@ -14,7 +14,11 @@ const state = {
     followingSet: new Set(),
     videoViewTracked: new Set(),
     pending: new Set(),          // guard klik berganda (like/save)
-    loadSeq: 0,                  // elak respons lama menimpa yang baru
+    loadSeq: 0,
+    profile: null,
+    profiles: {},
+    renderSeq: 0,
+    muted: true,                  // elak respons lama menimpa yang baru
     activeChatSubscription: null,
     activeChatUserId: null,
     searchTimeout: null,

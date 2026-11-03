@@ -27,6 +27,7 @@ async function openCommentModal(videoId) {
 
     const btn = document.getElementById('submitComment');
     btn.onclick = async () => {
+        if (!requireAccount()) return;
         const now = Date.now();
         if (now - state.lastCommentTime < COOLDOWN_COMMENT_MS) {
             showToast('⏳ Tunggu sebentar sebelum komen lagi', true);
@@ -36,7 +37,7 @@ async function openCommentModal(videoId) {
         if (!text) return;
 
         btn.disabled = true;
-        const username = 'user_' + state.currentUser.id.slice(0, 6);
+        const username = state.profile?.username || 'user_' + state.currentUser.id.slice(0, 6);
         const { error } = await sb.from('comments').insert({
             video_id: videoId,
             user_id: state.currentUser.id,

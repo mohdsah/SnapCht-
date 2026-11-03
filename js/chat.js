@@ -1,4 +1,5 @@
 async function openChatModal() {
+    if (!requireAccount()) return;
     closeModal('chatModal');
     const { data: users } = await sb.from('videos')
         .select('username, user_id').neq('user_id', state.currentUser.id).limit(50);

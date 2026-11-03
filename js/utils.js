@@ -43,24 +43,6 @@ function isValidVideoUrl(url) {
     } catch { return false; }
 }
 
-function applyThemeUI() {
-    const isLight = document.body.classList.contains('light-mode');
-    const themeBtn = document.getElementById('themeBtn');
-    if (themeBtn) themeBtn.innerText = isLight ? '☀️' : '🌙';
-    const sidebarToggle = document.getElementById('sidebarThemeToggle');
-    if (sidebarToggle) sidebarToggle.innerHTML = isLight
-        ? '<span>🌙 Tukar ke Dark Mode</span>'
-        : '<span>☀️ Tukar ke Light Mode</span>';
-}
-
-function toggleTheme() {
-    document.body.classList.toggle('light-mode');
-    try {
-        localStorage.setItem('snapcht_theme',
-            document.body.classList.contains('light-mode') ? 'light' : 'dark');
-    } catch {}
-    applyThemeUI();
-}
 
 function closeModal(modalId) {
     document.getElementById(modalId)?.remove();
@@ -73,10 +55,53 @@ window.searchHashtag = function (hashtag) {
 };
 window.closeModal = closeModal;
 
-// Tema awal (disegerakkan dengan ikon)
+
+// Tindakan yang memerlukan akaun sebenar (bukan tetamu) dan tidak disekat
+function requireAccount() {
+    if (!state.currentUser || state.currentUser.is_anonymous) {
+        showToast('🔐 Sila log masuk atau daftar dahulu', true);
+        if (typeof showAuthScreen === 'function') showAuthScreen('login');
+        return false;
+    }
+    if (state.profile?.banned) { showToast('⛔ Akaun anda disekat', true); return false; }
+    return true;
+}
+
+function applyThemeUI() {
+    const d = document.body.classList.contains('dark-mode');
+    const b = document.getElementById('themeBtn'); if (b) b.innerText = d ? '☀️' : '🌙';
+    const t = document.getElementById('drawerTheme');
+    if (t) t.innerHTML = d ? '<span class="menu-icon">☀️</span> Mod Cerah' : '<span class="menu-icon">🌙</span> Mod Gelap';
+}
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    try { localStorage.setItem('snapcht_theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light'); } catch {}
+    applyThemeUI();
+}
 (function () {
-    try {
-        if (localStorage.getItem('snapcht_theme') === 'light') document.body.classList.add('light-mode');
-    } catch {}
+    try { if (localStorage.getItem('snapcht_theme') === 'dark') document.body.classList.add('dark-mode'); } catch {}
     applyThemeUI();
 })();
+
+async function removeVideoFile(url) {
+    const m = String(url || '').match(/\/storage\/v1\/object\/public\/videos\/(.+)$/);
+    if (m) await sb.storage.from('videos').remove([decodeURIComponent(m[1].split('?')[0])]);
+}
+function displayName(p, fb = 'pengguna') { return p?.display_name || p?.username || fb; }
+function avatarHtml(p, cls = '') {
+    const url = p?.avatar_url;
+    if (url && /^https:\/\//.test(url)) return `<img class="avatar ${cls}" src="${escapeHtml(url)}" alt="" loading="lazy">`;
+    return `<span class="avatar ${cls}">${escapeHtml(displayName(p, '?').charAt(0).toUpperCase())}</span>`;
+}
+function timeAgo(iso) {
+    const s = Math.max(1, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 3600) return Math.floor(s / 60) + ' min';
+    if (s < 86400) return Math.floor(s / 3600) + ' j';
+    return Math.floor(s / 86400) + ' h';
+}
+async function cacheProfiles(ids) {
+    const need = [...new Set(ids)].filter(id => id && !state.profiles[id]);
+    if (!need.length) return;
+    const { data } = await sb.from('profiles').select('id, username, display_name, avatar_url, bio, location').in('id', need);
+    (data || []).forEach(p => state.profiles[p.id] = p);
+}

@@ -4,6 +4,7 @@ function sanitizeSearch(s) {
 }
 
 async function loadVideos(type, searchQuery = '') {
+    if (type === 'following') return loadFollowingFeed();
     const seq = ++state.loadSeq;
     state.currentFeedType = type;
     updateActiveNavUI(type);
@@ -72,6 +73,7 @@ async function loadMyVideos() {
 }
 
 async function toggleLikeVideo(videoId, btnElement) {
+    if (!requireAccount()) return;
     const key = 'like:' + videoId;
     if (state.pending.has(key)) return;
     state.pending.add(key);
@@ -87,12 +89,14 @@ async function toggleLikeVideo(videoId, btnElement) {
             if (error) { showToast('❌ Gagal', true); return; }
             state.likedVideosSet.delete(videoId);
             iconCircle?.classList.remove('liked');
+            if (iconCircle) iconCircle.textContent = '🤍';
         } else {
             const { error } = await sb.from('liked_videos')
                 .insert({ user_id: state.currentUser.id, video_id: videoId });
             if (error) { showToast('❌ Gagal', true); return; }
             state.likedVideosSet.add(videoId);
             iconCircle?.classList.add('liked');
+            if (iconCircle) iconCircle.textContent = '❤️';
         }
 
         const { data: v } = await sb.from('videos').select('likes').eq('id', videoId).single();
@@ -105,6 +109,7 @@ async function toggleLikeVideo(videoId, btnElement) {
 }
 
 async function toggleSaveVideo(videoId, btnElement) {
+    if (!requireAccount()) return;
     const key = 'save:' + videoId;
     if (state.pending.has(key)) return;
     state.pending.add(key);
@@ -155,101 +160,109 @@ function trackVideoView(videoId, videoElement) {
 
 async function deleteVideo(videoId) {
     if (!confirm('Padam video ini? Tidak boleh dibatalkan.')) return;
-    const { error } = await sb.from('videos').delete()
-        .eq('id', videoId).eq('user_id', state.currentUser.id);
+    const v = state.allVideos.find(x => x.id === videoId);
+    let q = sb.from('videos').delete().eq('id', videoId);
+    if (state.profile?.role !== 'admin') q = q.eq('user_id', state.currentUser.id);
+    const { error } = await q;
     if (error) { showToast('❌ Gagal memadam', true); return; }
+    if (v) removeVideoFile(v.video_url).catch(() => {});
+    state.allVideos = state.allVideos.filter(x => x.id !== videoId);
     showToast('🗑️ Video dipadam');
-    await loadMyVideos();
+    renderFeed();
 }
 
-function renderFeed() {
+async function renderFeed() {
+    const mySeq = ++state.renderSeq;
     if (state.currentObserver) state.currentObserver.disconnect();
     if (feedContainer) feedContainer.scrollTop = 0;
 
     if (!state.allVideos.length) {
-        let msg = '📹 Tiada video. Klik + untuk muat naik!';
-        if (state.currentFeedType === 'saved') msg = '📌 Tiada video disimpan.';
-        if (state.currentFeedType === 'myvideos') msg = '📹 Anda belum ada video.';
-        feedContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
+        const msgs = { saved: '🔖 Belum ada video disimpan.', myvideos: '🎞️ Anda belum ada video. Tekan + untuk muat naik!',
+            following: '👥 Ikuti kreator untuk lihat video mereka di sini.', user: '🎞️ Kreator ini belum ada video.' };
+        feedContainer.innerHTML = `<div class="empty-state">${msgs[state.currentFeedType] || '🎞️ Tiada video lagi. Jadilah yang pertama!'}</div>`;
         return;
     }
+    await cacheProfiles(state.allVideos.map(v => v.user_id));
+    if (mySeq !== state.renderSeq) return;
 
+    const me = state.currentUser?.id;
+    const isAdmin = state.profile?.role === 'admin';
     feedContainer.innerHTML = state.allVideos.map(video => {
+        const p = state.profiles[video.user_id] || { username: video.username };
         const isLiked = state.likedVideosSet.has(video.id);
         const isSaved = state.savedVideosSet.has(video.id);
-        const isOwner = video.user_id === state.currentUser?.id;
+        const isOwner = video.user_id === me;
         return `
-        <div class="video-wrapper" data-id="${video.id}" data-user-id="${video.user_id}">
-            <div class="video-card">
+        <article class="vcard video-wrapper" data-id="${video.id}" data-user-id="${video.user_id}">
+            <header class="vhead">
+                <div class="vuser" data-action="profile" data-user-id="${video.user_id}">
+                    ${avatarHtml(p)}
+                    <div><b>${escapeHtml(displayName(p, video.username))}</b>
+                    <small>@${escapeHtml(p.username)} · ${timeAgo(video.created_at)}</small></div>
+                </div>
+                ${!isOwner ? `<button class="follow-btn-small" data-user-id="${video.user_id}">${state.followingSet.has(video.user_id) ? 'Mengikuti' : 'Ikuti'}</button>` : ''}
+            </header>
+            <div class="vmedia">
                 <video class="main-video-player" src="${escapeHtml(video.video_url)}" loop muted playsinline preload="metadata"></video>
+                <button class="mute-btn" data-action="mute">${state.muted ? '🔇' : '🔊'}</button>
                 <div class="video-progress"><div class="progress-fill"></div></div>
-                <div class="interaction-bar">
-                    <div class="interact-btn" data-action="profile" data-user-id="${video.user_id}">
-                        <div class="circle-icon">👤</div>
-                    </div>
-                    <div class="interact-btn like-btn" data-id="${video.id}">
-                        <div class="circle-icon ${isLiked ? 'liked' : ''}">❤️</div>
-                        <span class="like-count">${formatNumber(video.likes)}</span>
-                    </div>
-                    <div class="interact-btn save-btn" data-id="${video.id}">
-                        <div class="circle-icon ${isSaved ? 'saved' : ''}">📌</div>
-                        <span>Simpan</span>
-                    </div>
-                    <div class="interact-btn" data-action="comment" data-id="${video.id}">
-                        <div class="circle-icon">💬</div><span>Komen</span>
-                    </div>
-                    <div class="interact-btn" data-action="share" data-id="${video.id}">
-                        <div class="circle-icon">🔗</div><span>Kongsi</span>
-                    </div>
-                    <div class="interact-btn" data-action="report" data-id="${video.id}">
-                        <div class="circle-icon">🚩</div><span>Lapor</span>
-                    </div>
-                    ${isOwner ? `
-                    <div class="interact-btn" data-action="delete" data-id="${video.id}">
-                        <div class="circle-icon" style="background:#dc2626;">🗑️</div><span>Padam</span>
-                    </div>` : ''}
-                </div>
-                <div class="video-details-box">
-                    <div class="username" data-user-id="${video.user_id}">
-                        @${escapeHtml(video.username)}
-                        ${!isOwner ? `<button class="follow-btn-small" data-user-id="${video.user_id}">${state.followingSet.has(video.user_id) ? 'Mengikuti' : 'Ikuti'}</button>` : ''}
-                    </div>
-                    <p class="description">${escapeHtml(video.description || 'Tiada kapsyen')}</p>
-                    ${extractHashtags(video.description)}
-                    <div class="video-stats">
-                        <span>❤️ <span class="stat-like-count">${formatNumber(video.likes)}</span></span>
-                        <span class="view-count">👁️ ${formatNumber(video.views || 0)}</span>
-                    </div>
-                    <div class="music-track">🎵 ${escapeHtml(video.username)}</div>
-                </div>
             </div>
-        </div>`;
+            <div class="act-bar">
+                <div class="interact-btn like-btn" data-id="${video.id}">
+                    <span class="circle-icon ${isLiked ? 'liked' : ''}">${isLiked ? '❤️' : '🤍'}</span><span class="like-count">${formatNumber(video.likes)}</span></div>
+                <div class="interact-btn" data-action="comment" data-id="${video.id}"><span class="circle-icon">💬</span><span>Komen</span></div>
+                <div class="interact-btn" data-action="share" data-id="${video.id}"><span class="circle-icon">↗️</span><span>Kongsi</span></div>
+                <div class="interact-btn save-btn" data-id="${video.id}"><span class="circle-icon ${isSaved ? 'saved' : ''}">🔖</span><span>Simpan</span></div>
+                <div class="interact-btn" data-action="more" data-id="${video.id}" data-can-delete="${isOwner || isAdmin}"><span class="circle-icon">⋯</span></div>
+            </div>
+            <div class="vbody">
+                <p class="description">${escapeHtml(video.description || '')}</p>
+                ${extractHashtags(video.description)}
+                <div class="video-stats"><span class="view-count">👁️ ${formatNumber(video.views || 0)} tontonan</span></div>
+            </div>
+        </article>`;
     }).join('');
-
     initVideoPlayers();
+}
+
+async function loadFollowingFeed() {
+    const seq = ++state.loadSeq;
+    state.currentFeedType = 'following';
+    updateActiveNavUI('following');
+    const ids = [...state.followingSet];
+    if (!ids.length) { state.allVideos = []; renderFeed(); return; }
+    const { data } = await sb.from('videos').select('*').in('user_id', ids)
+        .order('created_at', { ascending: false }).limit(100);
+    if (seq !== state.loadSeq) return;
+    state.allVideos = data || [];
+    renderFeed();
 }
 
 function initVideoPlayers() {
     const videos = document.querySelectorAll('.main-video-player');
     videos.forEach(video => {
-        const wrapper = video.closest('.video-wrapper');
-        const videoId = wrapper?.getAttribute('data-id');
-        const progressFill = video.closest('.video-card')?.querySelector('.progress-fill');
-        if (videoId) trackVideoView(videoId, video);
-
+        video.muted = state.muted;
+        const id = video.closest('.video-wrapper')?.getAttribute('data-id');
+        const fill = video.closest('.vmedia')?.querySelector('.progress-fill');
+        if (id) trackVideoView(id, video);
         video.ontimeupdate = () => {
-            if (video.duration && progressFill)
-                progressFill.style.width = (video.currentTime / video.duration) * 100 + '%';
+            if (video.duration && fill) fill.style.width = (video.currentTime / video.duration) * 100 + '%';
         };
     });
-
     state.currentObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            const vid = entry.target;
-            if (entry.isIntersecting) vid.play().catch(() => {});
-            else vid.pause();
-        });
+        entries.forEach(en => en.isIntersecting ? en.target.play().catch(() => {}) : en.target.pause());
     }, { root: feedContainer, threshold: 0.6 });
-
     videos.forEach(v => state.currentObserver.observe(v));
+}
+
+async function loadUserVideos(userId) {
+    if (!userId) return;
+    const seq = ++state.loadSeq;
+    state.currentFeedType = 'user';
+    updateActiveNavUI('user');
+    const { data } = await sb.from('videos').select('*')
+        .eq('user_id', userId).order('created_at', { ascending: false });
+    if (seq !== state.loadSeq) return;
+    state.allVideos = data || [];
+    renderFeed();
 }

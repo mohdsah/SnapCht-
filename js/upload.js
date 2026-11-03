@@ -1,4 +1,5 @@
 function showUploadModal() {
+    if (!requireAccount()) return;
     closeModal('uploadModal');
 
     const modal = document.createElement('div');
@@ -51,7 +52,7 @@ function showUploadModal() {
     uploadBtn.onclick = async () => {
         errorMsg.style.display = 'none';
         const caption = document.getElementById('videoCaption').value.trim() || 'Tiada kapsyen';
-        const username = 'user_' + state.currentUser.id.slice(0, 6);
+        const username = state.profile?.username || 'user_' + state.currentUser.id.slice(0, 6);
 
         uploadBtn.disabled = true;
         progressContainer.style.display = 'block';
