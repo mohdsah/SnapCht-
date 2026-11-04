@@ -123,8 +123,68 @@ function timeAgo(iso) {
 async function cacheProfiles(ids) {
     const need = [...new Set(ids)].filter(id => id && !state.profiles[id]);
     if (!need.length) return;
-    const { data } = await sb.from('profiles').select('id, username, display_name, avatar_url, bio, location').in('id', need);
+    const { data } = await sb.from('profiles').select('id, username, display_name, avatar_url, bio, location, follower_count').in('id', need);
     (data || []).forEach(p => state.profiles[p.id] = p);
+}
+
+// ===== PAUTAN VIDEO LUAR (YouTube / TikTok / Facebook / Instagram) =====
+// Hanya URL embed rasmi dibina oleh kod ini; URL pengguna tidak pernah dimasukkan terus ke iframe.
+function parseEmbed(raw) {
+    let u;
+    try { u = new URL(String(raw || '').trim()); } catch { return null; }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    const host = u.hostname.toLowerCase().replace(/^(www\.|m\.|mobile\.)/, '');
+    const path = u.pathname;
+    let m;
+    const yt = (id, vertical) => ({ platform: 'youtube', label: 'YouTube', ratio: vertical ? '9/16' : '16/9',
+        src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&loop=1&playlist=${id}` });
+    if (host === 'youtu.be') { m = path.match(/^\/([\w-]{11})/); if (m) return yt(m[1], false); }
+    if (host === 'youtube.com' || host === 'music.youtube.com') {
+        const v = u.searchParams.get('v');
+        if (path === '/watch' && /^[\w-]{11}$/.test(v || '')) return yt(v, false);
+        m = path.match(/^\/(shorts|embed|live)\/([\w-]{11})/);
+        if (m) return yt(m[2], m[1] === 'shorts');
+    }
+    if (host === 'tiktok.com') {
+        m = path.match(/^\/@[\w.-]+\/video\/(\d{8,25})/);
+        if (m) return { platform: 'tiktok', label: 'TikTok', ratio: '9/16', src: `https://www.tiktok.com/embed/v2/${m[1]}` };
+    }
+    if (host === 'facebook.com' || host === 'fb.watch') {
+        const ok = host === 'fb.watch' || /\/(videos|reel|reels)\//.test(path) || path === '/watch' || /^\/share\/[vr]\//.test(path);
+        if (ok) return { platform: 'facebook', label: 'Facebook', ratio: '16/9',
+            src: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(u.href)}&show_text=false&width=500` };
+    }
+    if (host === 'instagram.com') {
+        m = path.match(/^\/(p|reel|reels|tv)\/([\w-]{5,20})/);
+        if (m) return { platform: 'instagram', label: 'Instagram', ratio: '9/16',
+            src: `https://www.instagram.com/${m[1] === 'reels' ? 'reel' : m[1]}/${m[2]}/embed` };
+    }
+    return null;
+}
+function thumbHtml(v) {
+    const em = parseEmbed(v.video_url);
+    if (em) return `<div class="pp-embed">▶ ${em.label}</div>`;
+    return `<video src="${escapeHtml(v.video_url)}#t=0.5" muted playsinline preload="metadata"></video>`;
+}
+
+// ===== LENCANA PENGIKUT (ubah senarai ini untuk tukar tahap) =====
+const BADGE_TIERS = [
+    { min: 1000000, label: '1M',   icon: '👑', name: 'Mahkota',   color: '#f59e0b' },
+    { min: 500000,  label: '500K', icon: '💐', name: 'Jambangan', color: '#ec4899' },
+    { min: 100000,  label: '100K', icon: '🌹', name: 'Mawar',     color: '#e5484d' },
+    { min: 50000,   label: '50K',  icon: '🌺', name: 'Raya',      color: '#f97316' },
+    { min: 10000,   label: '10K',  icon: '🌸', name: 'Sakura',    color: '#f472b6' },
+    { min: 5000,    label: '5K',   icon: '🌼', name: 'Kekwa',     color: '#eab308' },
+    { min: 1000,    label: '1K',   icon: '🌱', name: 'Tunas',     color: '#22c55e' }
+];
+function badgeFor(n) { n = Number(n) || 0; return BADGE_TIERS.find(t => n >= t.min) || null; }
+function badgeHtml(p) {
+    const b = badgeFor(p?.follower_count);
+    return b ? `<span class="fbadge" style="--bc:${b.color}" title="${b.name} · ${b.label}+ pengikut">${b.icon}</span>` : '';
+}
+function tierPill(n) {
+    const b = badgeFor(n);
+    return b ? `<div><span class="pp-tier" style="--bc:${b.color}">${b.icon} ${b.name} · ${b.label}+ pengikut</span></div>` : '';
 }
 
 // Tindakan yang memerlukan akaun sebenar; tetamu dihantar ke halaman log masuk
@@ -156,7 +216,7 @@ function authMsg(text, ok = false) {
 
 async function loadProfile() {
     const u = state.currentUser;
-    const { data } = await sb.from('profiles').select('username, role, banned, display_name, bio, location, avatar_url').eq('id', u.id).maybeSingle();
+    const { data } = await sb.from('profiles').select('username, role, banned, display_name, bio, location, avatar_url, follower_count').eq('id', u.id).maybeSingle();
     state.profile = data || { username: 'user_' + u.id.slice(0, 6), role: 'user', banned: false };
 }
 
@@ -242,8 +302,9 @@ async function openProfilePage(userId) {
             <button class="pp-back" id="ppBack">← Kembali</button>
             <div class="pp-head">
                 ${avatarHtml(p, 'lg')}
-                <h2>${escapeHtml(displayName(p))}</h2>
+                <h2>${escapeHtml(displayName(p))} ${badgeHtml({ follower_count: followers })}</h2>
                 <p class="pp-user">@${escapeHtml(p.username)} ${p.role === 'admin' ? '🛡️' : ''}</p>
+                ${tierPill(followers)}
                 ${p.bio ? `<p class="pp-bio">${escapeHtml(p.bio)}</p>` : (isMe ? '<p class="pp-bio" style="color:var(--muted)">Belum ada bio. Tekan Edit Profil.</p>' : '')}
                 ${p.location ? `<p class="pp-loc">📍 ${escapeHtml(p.location)}</p>` : ''}
                 <div class="pp-stats">
@@ -278,7 +339,7 @@ async function openProfilePage(userId) {
         current = list;
         $('ppGrid').innerHTML = list.length ? list.map(v => `
             <div class="pp-item" data-id="${v.id}">
-                <video src="${escapeHtml(v.video_url)}#t=0.5" muted playsinline preload="metadata"></video>
+                ${thumbHtml(v)}
                 <span>▶ ${formatNumber(v.views || 0)}</span>
             </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1">${emptyMsg}</div>`;
     };
