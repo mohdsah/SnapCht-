@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Live · SnapCht</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+    <link rel="stylesheet" href="css/live.css?v=14">
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.8.js"></script>
+</head>
+<body>
+<header class="app-header">
+    <a class="header-right" href="index.html" aria-label="Kembali">←</a>
+    <a href="index.html" class="brand-logo">Snap<span>Cht</span></a>
+    <div class="header-spacer"></div>
+    <div class="header-right" id="themeBtn">🌙</div>
+</header>
+<main class="sub-main">
+<div id="liveRoot">
+    <div id="lvHead" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <h2 style="flex:1;">🔴 Live</h2><button id="lvRefresh" class="btn-secondary" style="width:auto;padding:8px 16px;">↻ Segar</button>
+    </div>
+    <div id="lvList"></div>
+    <div id="lvViewer" style="display:none">
+        <div class="lv-bar"><button id="lvBack" class="btn-secondary" style="width:auto;padding:8px 14px;">← Senarai</button>
+            <b id="lvTitle" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></b><span id="lvStats">👁 0 · ❤️ 0</span></div>
+        <div id="stage" class="lv-stage"><div class="lv-wait">Menyambung...</div></div>
+        <div style="max-width:420px;margin:10px auto;"><button id="lvLike" class="btn-primary">🤍 Like</button></div>
+        <div id="lvChat" class="lv-chat"></div>
+        <form id="lvChatForm" class="lv-chatform"><input class="modal-input" id="lvMsg" maxlength="300" placeholder="Tulis komen..." autocomplete="off" style="margin:0"><button class="btn-primary" type="submit" style="width:auto;padding:0 20px;">Hantar</button></form>
+        <p id="lvErr" class="auth-msg"></p>
+    </div>
+    <p class="lv-note">Siaran langsung hanya boleh dimulakan dari app Android SnapCht. Di web anda hanya boleh menonton. Voice Room tersedia dalam app sahaja.</p>
+</div>
+</main>
+<script src="js/live.js?v=14"></script>
+</body>
+</html>
