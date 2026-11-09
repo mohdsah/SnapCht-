@@ -773,6 +773,7 @@ function navigate(nav) {
         case 'chat': location.href = 'chat.html'; return;
         case 'following': return loadVideos('following');
         case 'trending': return loadVideos('trending');
+        case 'live': location.href = 'live.html'; return;
         case 'create': location.href = 'upload.html'; return;
         case 'profile': location.href = 'profile.html'; return;
         case 'admin': location.href = 'admin.html'; return;

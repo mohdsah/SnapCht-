@@ -379,6 +379,27 @@ function listLogs() {
         l => `<div class="adm-card"><b>${escapeHtml(l.action)}</b> · ${fmt(l.created_at)}<br><small style="color:var(--muted)">${escapeHtml(l.target || '')} ${escapeHtml(l.detail || '')}</small></div>`, 'Tiada log');
 }
 
+async function listLive() {
+    box().innerHTML = '<div class="empty-state">Memuatkan...</div>';
+    const [l, v, r] = await Promise.all([
+        sb.from('live_sessions').select('id, title, host_username, created_at, heartbeat_at').eq('status', 'live').order('created_at', { ascending: false }).limit(50),
+        sb.from('voice_rooms').select('id, title, owner_username, created_at, heartbeat_at').eq('status', 'open').order('created_at', { ascending: false }).limit(50),
+        sb.from('live_reports').select('id, reason, created_at, live_id, live_sessions(title, host_username, status)').order('created_at', { ascending: false }).limit(30)]);
+    const age = (d) => Math.max(0, Math.round((Date.now() - new Date(d).getTime()) / 1000)) + ' s lepas';
+    if (l.error) { box().innerHTML = '<div class="empty-state">Gagal memuatkan. Jalankan SQL LIVE dahulu.</div>'; return; }
+    box().innerHTML = `<div class="adm-actions" style="margin:0 0 12px;"><button data-act="stale">🧹 Tamatkan sesi lapuk</button></div>
+        <h3 style="margin:6px 0;">🔴 Siaran aktif (${l.data.length})</h3>` + (l.data.map(x => `<div class="adm-card"><b>${escapeHtml(x.title)}</b> · @${escapeHtml(x.host_username)}<br>
+        <small style="color:var(--muted)">Mula ${fmt(x.created_at)} · degupan ${age(x.heartbeat_at)}</small>
+        <div class="adm-actions"><button class="danger" data-act="endlive" data-kind="live" data-id="${x.id}">⏹ Tamatkan</button></div></div>`).join('') || '<div class="empty-state" style="padding:12px">Tiada</div>') +
+        `<h3 style="margin:14px 0 6px;">🎙 Voice Room terbuka (${(v.data || []).length})</h3>` + ((v.data || []).map(x => `<div class="adm-card"><b>${escapeHtml(x.title)}</b> · @${escapeHtml(x.owner_username)}<br>
+        <small style="color:var(--muted)">Degupan ${age(x.heartbeat_at)}</small>
+        <div class="adm-actions"><button class="danger" data-act="endlive" data-kind="voice" data-id="${x.id}">⏹ Tutup</button></div></div>`).join('') || '<div class="empty-state" style="padding:12px">Tiada</div>') +
+        `<h3 style="margin:14px 0 6px;">🚩 Laporan siaran (${(r.data || []).length})</h3>` + ((r.data || []).map(x => { const s = x.live_sessions; return `<div class="adm-card"><b>${escapeHtml(x.reason)}</b> · ${fmt(x.created_at)}<br>
+        ${s ? escapeHtml(s.title) + ' · @' + escapeHtml(s.host_username) + ' (' + escapeHtml(s.status) + ')' : '<i>Siaran dipadam</i>'}
+        <div class="adm-actions">${s && s.status === 'live' ? `<button class="danger" data-act="endlive" data-kind="live" data-id="${x.live_id}">⏹ Tamatkan siaran</button>` : ''}
+        <button data-act="delreport" data-id="${x.id}">Abaikan</button></div></div>`; }).join('') || '<div class="empty-state" style="padding:12px">Tiada laporan</div>');
+}
+
 const TABS = {
     stats: { label: '📊 Ringkasan', bar: () => '', list: listStats },
     videos: { label: '🎞️ Video', bar: barVideos, list: listVideos },
@@ -386,6 +407,7 @@ const TABS = {
     reports: { label: '🚩 Laporan', bar: () => '', list: listReports },
     users: { label: '👥 Pengguna', bar: barUsers, list: listUsers },
     announce: { label: '📢 Pengumuman', bar: () => '', list: listAnnounce },
+    live: { label: '📡 Live', bar: () => '', list: listLive },
     logs: { label: '📜 Log', bar: () => '', list: listLogs }
 };
 
@@ -448,6 +470,19 @@ async function onAction(e) {
     } else if (act === 'deluser') {
         if (prompt(`Padam akaun SECARA KEKAL beserta semua video & komen.\nTaip "${name}" untuk sahkan:`) !== name) ok = false;
         else { await purgeUserFiles(id).catch(() => {}); ({ error } = await sb.rpc('admin_delete_user', { p_uid: id })); if (!error) logAction('padam_akaun', '@' + name); }
+    } else if (act === 'endlive') {
+        if (!confirm('Tamatkan sesi ini sekarang?')) ok = false;
+        else {
+            const voice = b.dataset.kind === 'voice';
+            ({ error } = await sb.from(voice ? 'voice_rooms' : 'live_sessions').update(voice
+                ? { status: 'closed', closed_at: new Date().toISOString() } : { status: 'ended', ended_at: new Date().toISOString() }).eq('id', id));
+            if (!error) logAction('tamat_live', id, voice ? 'voice' : 'live');
+        }
+    } else if (act === 'delreport') {
+        ({ error } = await sb.from('live_reports').delete().eq('id', id));
+    } else if (act === 'stale') {
+        const res = await sb.rpc('end_stale_sessions'); error = res.error;
+        if (!error) showToast('✅ ' + res.data + ' sesi lapuk ditamatkan');
     } else if (act === 'saveann') {
         const val = document.getElementById('annText').value.trim();
         ({ error } = await sb.from('site_settings').upsert({ key: 'announcement', value: val, updated_at: new Date().toISOString() }));
